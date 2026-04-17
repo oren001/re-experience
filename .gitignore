@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+*.local
+.wrangler/
+.wrangler
+
+# Large PLY/SPZ scene files (stored in R2)
+public/*.ply
+public/*.spz
+dist/

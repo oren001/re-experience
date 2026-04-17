@@ -1,0 +1,15 @@
+name = "re-experience-uploader"
+main = "index.ts"
+compatibility_date = "2024-01-01"
+
+[[r2_buckets]]
+binding = "VIDEOS"
+bucket_name = "re-experience-videos"
+
+[[r2_buckets]]
+binding = "SCENES"
+bucket_name = "re-experience-scenes"
+
+[vars]
+PUBLIC_URL_V = "https://pub-2474353e58cb45cdb37787660c31cff8.r2.dev"
+PUBLIC_URL_S = "https://pub-2b339d7915fe4dbc860a32e0380e6f57.r2.dev"

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Memory Viewer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #080810; overflow: hidden; }
+    #status {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 20px;
+      color: rgba(255,255,255,0.5); font-family: system-ui, sans-serif;
+      font-size: 13px; letter-spacing: 0.06em; pointer-events: none; z-index: 10;
+    }
+    #spinner {
+      width: 32px; height: 32px; border: 2px solid rgba(255,255,255,0.08);
+      border-top-color: rgba(255,255,255,0.5); border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    #bar-wrap { width: 180px; height: 2px; background: rgba(255,255,255,0.08); border-radius: 2px; }
+    #bar { height: 100%; border-radius: 2px; background: rgba(255,255,255,0.4); width: 0; transition: width 0.4s; }
+    #msg { text-align: center; }
+    #error {
+      display: none; position: fixed; inset: 0; align-items: center; justify-content: center;
+      flex-direction: column; gap: 12px; z-index: 20; color: #fca5a5;
+      font-family: system-ui, sans-serif; font-size: 13px; background: #080810;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div id="status">
+    <div id="spinner"></div>
+    <div>
+      <div id="msg">Initialising…</div>
+      <div id="bar-wrap" style="margin-top:12px"><div id="bar"></div></div>
+    </div>
+  </div>
+  <div id="error"></div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/vendor/three.module.min.js",
+      "three/": "/vendor/three/"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from 'three'
+    import * as GS from '/vendor/gaussian-splats-3d.module.js'
+
+    const params = new URLSearchParams(location.search)
+    const plyUrl = params.get('url') || '/scene.ply'
+    const fileName = params.get('file') || 'scene.ply'
+
+    const setMsg = (t) => { document.getElementById('msg').textContent = t }
+    const setBar = (p) => { document.getElementById('bar').style.width = p + '%' }
+    const showError = (msg) => {
+      document.getElementById('status').style.display = 'none'
+      const el = document.getElementById('error')
+      el.style.display = 'flex'
+      el.innerHTML = `<div style="max-width:340px;text-align:center;padding:24px;background:rgba(127,29,29,0.3);border:1px solid rgba(239,68,68,0.3);border-radius:12px">
+        <p style="margin:0 0 8px">Failed to load scene</p>
+        <p style="color:rgba(255,255,255,0.3);font-size:11px;margin:0">${msg}</p>
+      </div>`
+    }
+
+    try {
+      setMsg('Creating renderer…'); setBar(10)
+
+      const name = fileName.toLowerCase()
+      const format = name.endsWith('.spz') ? GS.SceneFormat.Spz
+                   : name.endsWith('.splat') ? GS.SceneFormat.Splat
+                   : GS.SceneFormat.Ply
+
+      const viewer = new GS.Viewer({
+        cameraUp: [0, -1, 0],
+        initialCameraPosition: [0, -1, 5],
+        initialCameraLookAt: [0, 0, 0],
+        selfDrivenMode: true,
+        useBuiltInControls: true,
+        gpuAcceleratedSort: false,
+        sharedMemoryForWorkers: false,
+        dynamicScene: false,
+        rootElement: document.body,
+      })
+
+      setMsg('Loading scene…'); setBar(30)
+
+      await viewer.addSplatScene(plyUrl, {
+        splatAlphaRemovalThreshold: 1,
+        showLoadingUI: false,
+        format,
+        onProgress: (p) => {
+          if (p > 0) setBar(30 + p * 0.5)
+        }
+      })
+
+      setMsg('Fitting camera…'); setBar(85)
+
+      // Auto-fit camera to the loaded splats
+      try {
+        const mesh = viewer.splatMesh
+        const count = Math.min(mesh.getSplatCount?.() ?? 0, 1000)
+        if (count > 0) {
+          let cx = 0, cy = 0, cz = 0
+          let minX = Infinity, maxX = -Infinity
+          let minY = Infinity, maxY = -Infinity
+          let minZ = Infinity, maxZ = -Infinity
+          const pos = new THREE.Vector3()
+          for (let i = 0; i < count; i++) {
+            mesh.getSplatCenter(i, pos, false)
+            cx += pos.x; cy += pos.y; cz += pos.z
+            if (pos.x < minX) minX = pos.x; if (pos.x > maxX) maxX = pos.x
+            if (pos.y < minY) minY = pos.y; if (pos.y > maxY) maxY = pos.y
+            if (pos.z < minZ) minZ = pos.z; if (pos.z > maxZ) maxZ = pos.z
+          }
+          cx /= count; cy /= count; cz /= count
+          const span = Math.max(maxX-minX, maxY-minY, maxZ-minZ, 0.1)
+          viewer.camera.position.set(cx, cy - span * 0.1, cz + span * 2)
+          viewer.camera.lookAt(cx, cy, cz)
+          if (viewer.controls) {
+            viewer.controls.target.set(cx, cy, cz)
+            viewer.controls.update()
+          }
+          console.log('[splat] centroid:', cx.toFixed(2), cy.toFixed(2), cz.toFixed(2), 'span:', span.toFixed(2))
+        }
+      } catch (e) { console.warn('[splat] auto-fit failed:', e) }
+
+      setBar(100)
+      document.getElementById('status').style.display = 'none'
+      viewer.start()
+
+    } catch (e) {
+      console.error('[splat] fatal:', e)
+      showError(e.message ?? String(e))
+    }
+  </script>
+</body>
+</html>
