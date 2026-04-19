@@ -128,10 +128,17 @@ export class SceneManager {
     }
   }
 
+  // ── Mode stubs (used by legacy CanvasContainer hooks) ──────────────────
+  setBuildMode() { /* no-op in current splat-viewer architecture */ }
+  setNavigationMode() { /* no-op */ }
+  applyEnvironment(_env: unknown) { /* no-op */ }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sceneBuilder: any = null
+
   setSafeSpaceMode(active: boolean) {
     this.isSafeSpace = active
     if (active && !this.safeScene) {
-      this.safeScene = buildSafeSpace(this.scene.getEngine())
+      this.safeScene = buildSafeSpace(this.scene.getEngine() as Engine)
     }
   }
 

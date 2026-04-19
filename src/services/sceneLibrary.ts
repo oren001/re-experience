@@ -8,6 +8,8 @@ export interface SceneMeta {
   fileName: string
   createdAt: number
   sizeBytes: number
+  /** When set, the scene is loaded directly from this URL (skips IndexedDB) */
+  url?: string
 }
 
 interface SceneRecord extends SceneMeta {

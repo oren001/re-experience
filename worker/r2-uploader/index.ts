@@ -80,6 +80,30 @@ export default {
       }
     }
 
+    // ── Scene download (browser → R2 proxy with CORS) ─────────────────────
+    // GET /read-scene?key=seeds/scene.ply  or  /read-scene?key=scenes/job/name.ply
+    if (path === '/read-scene' && request.method === 'GET') {
+      const url = new URL(request.url)
+      const key = url.searchParams.get('key')
+      if (!key) return Response.json({ error: 'Missing key param' }, { status: 400, headers: CORS })
+
+      try {
+        const obj = await env.SCENES.get(key)
+        if (!obj) return new Response('Not found', { status: 404, headers: CORS })
+
+        return new Response(obj.body, {
+          headers: {
+            ...CORS,
+            'Content-Type': 'application/octet-stream',
+            'Content-Length': String(obj.size),
+            'Cache-Control': 'public, max-age=86400',
+          },
+        })
+      } catch (err) {
+        return Response.json({ error: String(err) }, { status: 500, headers: CORS })
+      }
+    }
+
     return new Response('Not found', { status: 404, headers: CORS })
   },
 }

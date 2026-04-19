@@ -11,6 +11,6 @@ export function useSceneMode() {
 
     if (mode === 'build') sm.setBuildMode()
     else if (mode === 'navigate') sm.setNavigationMode()
-    else if (mode === 'safe-space') sm.setSafeSpaceMode()
+    else if (mode === 'safe-space') sm.setSafeSpaceMode(true)
   }, [mode])
 }

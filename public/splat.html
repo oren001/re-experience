@@ -42,14 +42,14 @@
   <script type="importmap">
   {
     "imports": {
-      "three": "/vendor/three.module.min.js",
+      "three": "/vendor/three.module.min.js?v=3",
       "three/": "/vendor/three/"
     }
   }
   </script>
   <script type="module">
     import * as THREE from 'three'
-    import * as GS from '/vendor/gaussian-splats-3d.module.js'
+    import * as GS from '/vendor/gaussian-splats-3d.module.js?v=3'
 
     const params = new URLSearchParams(location.search)
     const plyUrl = params.get('url') || '/scene.ply'
@@ -67,13 +67,47 @@
       </div>`
     }
 
+    // Catch uncaught errors and surface them in the error UI
+    window.addEventListener('error', (e) => {
+      console.error('[splat] window error:', e.error || e.message)
+      showError(e.error?.message || e.message || 'Unknown error')
+    })
+    window.addEventListener('unhandledrejection', (e) => {
+      console.error('[splat] unhandled rejection:', e.reason)
+      showError(e.reason?.message || String(e.reason))
+    })
+
     try {
+      console.log('[splat] plyUrl:', plyUrl)
+      console.log('[splat] fileName:', fileName)
       setMsg('Creating renderer…'); setBar(10)
 
       const name = fileName.toLowerCase()
       const format = name.endsWith('.spz') ? GS.SceneFormat.Spz
                    : name.endsWith('.splat') ? GS.SceneFormat.Splat
                    : GS.SceneFormat.Ply
+
+      // Pre-fetch the PLY to verify it's accessible and has the right format.
+      // This bypasses any progressive-loading edge cases by producing a same-origin
+      // blob URL with guaranteed Content-Length, which the library can then load reliably.
+      setMsg('Downloading scene…'); setBar(15)
+      const fetchRes = await fetch(plyUrl)
+      if (!fetchRes.ok) throw new Error(`Failed to fetch PLY: HTTP ${fetchRes.status}`)
+      const plyArrayBuffer = await fetchRes.arrayBuffer()
+      console.log('[splat] fetched', plyArrayBuffer.byteLength, 'bytes')
+      if (plyArrayBuffer.byteLength === 0) throw new Error('Fetched PLY is empty')
+
+      // Quick sanity check: PLY files start with "ply\n"
+      const headerBytes = new Uint8Array(plyArrayBuffer, 0, Math.min(4, plyArrayBuffer.byteLength))
+      const headerStr = new TextDecoder().decode(headerBytes)
+      console.log('[splat] first 4 bytes:', JSON.stringify(headerStr))
+      if (!headerStr.startsWith('ply')) {
+        throw new Error(`File does not start with "ply" — got ${JSON.stringify(headerStr)}`)
+      }
+
+      // Create a local blob URL — guaranteed single-origin with Content-Length,
+      // more reliable than the original remote URL for the library's loader.
+      const localBlobUrl = URL.createObjectURL(new Blob([plyArrayBuffer], { type: 'application/octet-stream' }))
 
       const viewer = new GS.Viewer({
         cameraUp: [0, -1, 0],
@@ -87,9 +121,9 @@
         rootElement: document.body,
       })
 
-      setMsg('Loading scene…'); setBar(30)
+      setMsg('Parsing splats…'); setBar(30)
 
-      await viewer.addSplatScene(plyUrl, {
+      await viewer.addSplatScene(localBlobUrl, {
         splatAlphaRemovalThreshold: 1,
         showLoadingUI: false,
         format,
@@ -97,6 +131,8 @@
           if (p > 0) setBar(30 + p * 0.5)
         }
       })
+
+      URL.revokeObjectURL(localBlobUrl)
 
       setMsg('Fitting camera…'); setBar(85)
 

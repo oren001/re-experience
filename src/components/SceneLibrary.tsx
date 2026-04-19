@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
   listScenes, getSceneData, deleteScene,
-  saveScene, deduplicateScenes, type SceneMeta,
+  deduplicateScenes, type SceneMeta,
 } from '@/services/sceneLibrary'
 import { VideoProcessor } from './VideoProcessor'
 
@@ -69,8 +69,15 @@ function PortalCard({
     if (opening) return
     setOpening(true)
     try {
-      const data = await getSceneData(scene.id)
-      onOpen({ ...scene, id: URL.createObjectURL(new Blob([data])) } as unknown as SceneMeta)
+      if (scene.url) {
+        // URL-based scene (seed or R2 scene): stream directly — avoids blob URL
+        // issues with the gaussian-splats library's progressive loader
+        onOpen({ ...scene, id: scene.url } as unknown as SceneMeta)
+      } else {
+        // Local scene stored in IndexedDB: load as blob
+        const data = await getSceneData(scene.id)
+        onOpen({ ...scene, id: URL.createObjectURL(new Blob([data])) } as unknown as SceneMeta)
+      }
     } finally {
       setOpening(false)
     }
@@ -225,39 +232,51 @@ function PortalCard({
 export function SceneLibrary({ onOpen, onAddPhoto }: Props) {
   const [scenes, setScenes] = useState<SceneMeta[]>([])
   const [loading, setLoading] = useState(true)
-  const [seeding, setSeeding] = useState(false)
   const [showVideoProcessor, setShowVideoProcessor] = useState(false)
 
-  const load = useCallback(async (seed = false) => {
+  const WORKER = import.meta.env.VITE_R2_UPLOAD_URL ?? 'https://re-experience-uploader.oren001.workers.dev'
+
+  // Seed scenes are virtual — they stream directly from R2 via the Worker proxy
+  // (which returns Content-Length, ensuring the gaussian-splats library works reliably)
+  const SEEDS: SceneMeta[] = [
+    {
+      id: 'seed-my-memory',
+      name: 'My Memory',
+      fileName: 'scene.ply',
+      createdAt: 1_000_000_001,
+      sizeBytes: 29_122_486,
+      url: `${WORKER}/read-scene?key=${encodeURIComponent('seeds/scene.ply')}`,
+    },
+    {
+      id: 'seed-rebecca',
+      name: 'Rebecca',
+      fileName: 'rebecca.ply',
+      createdAt: 1_000_000_002,
+      sizeBytes: 72_000_000,
+      url: `${WORKER}/read-scene?key=${encodeURIComponent('seeds/rebecca.ply')}`,
+    },
+    {
+      id: 'seed-garden',
+      name: 'Garden',
+      fileName: 'garden.ply',
+      createdAt: 1_000_000_003,
+      sizeBytes: 110_000_000,
+      url: `${WORKER}/read-scene?key=${encodeURIComponent('seeds/garden.ply')}`,
+    },
+  ]
+
+  const load = useCallback(async () => {
     try {
       await deduplicateScenes()
-      let list = await listScenes()
-      if (seed && !localStorage.getItem('re-experience-seeded-v1')) {
-        setSeeding(true)
-        const R2 = 'https://pub-2b339d7915fe4dbc860a32e0380e6f57.r2.dev'
-        const seeds = [
-          { file: 'scene.ply',   name: 'My Memory', url: `${R2}/seeds/scene.ply`   },
-          { file: 'rebecca.ply', name: 'Rebecca',   url: `${R2}/seeds/rebecca.ply` },
-          { file: 'garden.ply',  name: 'Garden',    url: `${R2}/seeds/garden.ply`  },
-        ]
-        for (const s of seeds) {
-          if (list.some(sc => sc.fileName === s.file)) continue
-          try {
-            const res = await fetch(s.url)
-            if (res.ok) await saveScene(s.name, s.file, await res.arrayBuffer())
-          } catch {}
-        }
-        localStorage.setItem('re-experience-seeded-v1', '1')
-        list = await listScenes()
-        setSeeding(false)
-      }
-      setScenes(list)
+      const userScenes = await listScenes()
+      // Seeds always appear; user scenes (from drag-drop or video processing) appear on top
+      setScenes([...userScenes, ...SEEDS])
     } finally {
       setLoading(false)
     }
   }, [])
 
-  useEffect(() => { load(true) }, [load])
+  useEffect(() => { load() }, [load])
 
   const handleOpen = useCallback((scene: SceneMeta & { id: string }) => {
     onOpen(scene.id, scene.fileName)
@@ -341,7 +360,7 @@ export function SceneLibrary({ onOpen, onAddPhoto }: Props) {
         <VideoProcessor
           onDone={(_id, _name, _fileName) => {
             setShowVideoProcessor(false)
-            load(false)   // refresh scene list
+            load()   // refresh scene list
           }}
           onCancel={() => setShowVideoProcessor(false)}
         />
@@ -349,7 +368,7 @@ export function SceneLibrary({ onOpen, onAddPhoto }: Props) {
 
       {/* Body */}
       <main style={{ flex: 1, overflowY: 'auto', padding: '32px 40px 48px' }}>
-        {(loading || seeding) && (
+        {loading && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '16px' }}>
             <div style={{
               width: 32, height: 32,
@@ -359,12 +378,12 @@ export function SceneLibrary({ onOpen, onAddPhoto }: Props) {
               animation: 'spin 1s linear infinite',
             }} />
             <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '13px', letterSpacing: '0.06em' }}>
-              {seeding ? 'Preparing your memories…' : 'Loading…'}
+              Loading…
             </p>
           </div>
         )}
 
-        {!loading && !seeding && scenes.length === 0 && (
+        {!loading && scenes.length === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '20px', textAlign: 'center' }}>
             <div style={{ fontSize: '48px', opacity: 0.15 }}>◎</div>
             <div>
@@ -377,7 +396,7 @@ export function SceneLibrary({ onOpen, onAddPhoto }: Props) {
           </div>
         )}
 
-        {!loading && !seeding && scenes.length > 0 && (
+        {!loading && scenes.length > 0 && (
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',

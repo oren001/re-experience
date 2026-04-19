@@ -236,9 +236,13 @@ const disposeAllMeshes = (object3D) => {
 };
 
 const delayedExecute = (func, fast) => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         window.setTimeout(() => {
-            resolve(func ? func() : undefined);
+            try {
+                resolve(func ? func() : undefined);
+            } catch (e) {
+                reject(e);
+            }
         }, fast ? 1 : 50);
     });
 };
@@ -3473,6 +3477,9 @@ function storeChunksInBuffer(chunks, buffer) {
 }
 
 function finalize$1(splatData, optimizeSplatData, minimumAlpha, compressionLevel, sectionSize, sceneCenter, blockSize, bucketSize) {
+    if (!splatData) {
+        throw new Error('PLY loader produced no splat data. The file may be empty, corrupted, or in an unsupported format.');
+    }
     if (optimizeSplatData) {
         const splatBufferGenerator = SplatBufferGenerator.getStandardGenerator(minimumAlpha, compressionLevel,
                                                                                sectionSize, sceneCenter,
@@ -3723,8 +3730,16 @@ class PlyLoader {
                 if (loadComplete) {
                     if (internalLoadType === InternalLoadType.ProgressiveToSplatBuffer) {
                         loadPromise.resolve(directLoadSplatBuffer);
-                    } else {
+                    } else if (standardLoadUncompressedSplatArray) {
                         loadPromise.resolve(standardLoadUncompressedSplatArray);
+                    } else {
+                        // PATCH: header was never parsed (first chunk was the done=true chunk,
+                        // or the PLY header is malformed). Reject so the error propagates
+                        // instead of passing undefined downstream to finalize$1.
+                        loadPromise.reject(new Error(
+                            'PLY progressive load finished before header was parsed. ' +
+                            'File may be empty, truncated, or served without a body.'
+                        ));
                     }
                 }
             }
