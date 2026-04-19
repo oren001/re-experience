@@ -63,6 +63,7 @@ function PortalCard({
   const [opening, setOpening] = useState(false)
   const [hovered, setHovered] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const isSeed = scene.id.startsWith('seed-')
   const p = PORTALS[index % PORTALS.length]
 
   const handleOpen = async () => {
@@ -153,20 +154,22 @@ function PortalCard({
           }}>
             {scene.fileName.endsWith('.spz') ? 'SPZ' : 'PLY'}
           </span>
-          <button
-            onClick={handleDelete}
-            style={{
-              padding: '6px', borderRadius: '50%', border: 'none', cursor: 'pointer',
-              background: confirmDelete ? 'rgba(239,68,68,0.2)' : 'transparent',
-              color: confirmDelete ? '#fca5a5' : 'rgba(255,255,255,0.18)',
-              transition: 'all 0.2s',
-            }}
-            title={confirmDelete ? 'Click again to delete' : 'Delete'}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 6h18M8 6V4h8v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-            </svg>
-          </button>
+          {!isSeed && (
+            <button
+              onClick={handleDelete}
+              style={{
+                padding: '6px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+                background: confirmDelete ? 'rgba(239,68,68,0.2)' : 'transparent',
+                color: confirmDelete ? '#fca5a5' : 'rgba(255,255,255,0.18)',
+                transition: 'all 0.2s',
+              }}
+              title={confirmDelete ? 'Click again to delete' : 'Delete'}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18M8 6V4h8v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Scene name — large and elegant */}
@@ -267,10 +270,19 @@ export function SceneLibrary({ onOpen, onAddPhoto }: Props) {
 
   const load = useCallback(async () => {
     try {
+      // Purge corrupt/empty scenes (failed seed attempts leave sizeBytes=0 or tiny)
+      const allRaw = await listScenes()
+      const staleIds = allRaw.filter(s => s.sizeBytes < 1_000).map(s => s.id)
+      await Promise.all(staleIds.map(id => deleteScene(id)))
+
       await deduplicateScenes()
       const userScenes = await listScenes()
-      // Seeds always appear; user scenes (from drag-drop or video processing) appear on top
-      setScenes([...userScenes, ...SEEDS])
+
+      // Only show seeds for files not already uploaded by the user
+      const userFileNames = new Set(userScenes.map(s => s.fileName))
+      const filteredSeeds = SEEDS.filter(s => !userFileNames.has(s.fileName))
+
+      setScenes([...userScenes, ...filteredSeeds])
     } finally {
       setLoading(false)
     }
