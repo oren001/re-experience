@@ -233,6 +233,10 @@
     const settingsBtn        = document.getElementById('settings-btn')
     const settingsPanel      = document.getElementById('settings-panel')
 
+    // One-time migration: clear old invert flags users may have set while the
+    // camera.up bug was present (they were compensating for the wrong default).
+    if (!LS.get('mouse-fix-v2')) { LS.set('invert-x','0'); LS.set('invert-y','0'); LS.set('mouse-fix-v2','1') }
+
     const refreshSettingsUI = () => {
       const s = getSettings()
       apiKeyInput.value        = s.apiKey
@@ -379,7 +383,10 @@
 
     const scene3 = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1000)
-    camera.up.set(0, -1, 0)   // match Y-down Gaussian splat convention
+    // Standard Y-up camera — Spark handles the Gaussian splat Y-down convention
+    // internally, so we flip the mesh (splat.scale.y = -1 below) instead of the
+    // camera.  Inverting camera.up flips the screen's left/right handedness, which
+    // made every horizontal mouse movement appear backwards.
 
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight
@@ -428,6 +435,7 @@
         document.getElementById('toolbar').classList.add('visible')
       },
     })
+    splat.scale.y = -1   // flip Y-down splat data into Y-up camera space
     scene3.add(splat)
 
     // ── Euler (declared before any code that touches it) ─────────────────────
