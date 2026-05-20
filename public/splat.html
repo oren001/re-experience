@@ -257,6 +257,7 @@
   <div id="toolbar">
     <a id="supersplat-btn" class="tb-btn" href="https://playcanvas.com/supersplat/editor" target="_blank" rel="noopener">Edit in SuperSplat ↗</a>
     <button id="download-btn" class="tb-btn">⬇ Download PLY</button>
+    <button id="find-person-btn" class="tb-btn" style="display:none">◎ Find</button>
   </div>
 
   <!-- Calm / safe space overlay -->
@@ -338,6 +339,11 @@
       LS.set('person-context', personContextInput.value.trim())
       LS.set('lang',           langInput.value)
       settingsPanel.classList.remove('visible')
+      // Refresh Find button label
+      const fb = document.getElementById('find-person-btn')
+      if (fb && fb.style.display !== 'none') {
+        fb.textContent = `◎ Find ${LS.get('person-name') || 'person'}`
+      }
     })
 
     document.getElementById('clear-history').addEventListener('click', () => {
@@ -664,7 +670,7 @@
       document.addEventListener('mousemove', e => {
         if (!walking) return
         euler.y -= e.movementX * 0.0022
-        euler.x -= e.movementY * 0.0022
+        euler.x += e.movementY * 0.0022   // fixed: was inverted
         euler.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, euler.x))
         viewer.camera.quaternion.setFromEuler(euler)
       })
@@ -693,7 +699,7 @@
         if (keys['KeyA'] || keys['ArrowLeft'])  mv.x -= 1
         if (keys['KeyD'] || keys['ArrowRight']) mv.x += 1
         if (mv.lengthSq() > 0) {
-          const speed = span * 0.005
+          const speed = span * 0.018   // 3.6× faster than before
           mv.normalize().multiplyScalar(speed)
           fwd.set(0,0,-1).applyQuaternion(viewer.camera.quaternion); fwd.y=0; fwd.normalize()
           rgt.set(1,0, 0).applyQuaternion(viewer.camera.quaternion); rgt.y=0; rgt.normalize()
@@ -779,6 +785,26 @@
 
       const toolbar = document.getElementById('toolbar')
       toolbar.classList.add('visible')
+
+      // Find person button — teleport camera to stand in front of them
+      const findPersonBtn = document.getElementById('find-person-btn')
+      if (personMesh) {
+        const s = getSettings()
+        findPersonBtn.style.display = ''
+        findPersonBtn.textContent = `◎ Find ${s.personName || 'person'}`
+        findPersonBtn.addEventListener('click', () => {
+          // Position camera 1.5 units in front of person, at eye level
+          const standoff = 1.5
+          viewer.camera.position.set(
+            personX,
+            personY,
+            personZ + standoff
+          )
+          // Face them
+          viewer.camera.lookAt(personX, personY, personZ)
+          euler.setFromQuaternion(viewer.camera.quaternion, 'YXZ')
+        })
+      }
 
       // Download PLY button
       document.getElementById('download-btn').addEventListener('click', async () => {
