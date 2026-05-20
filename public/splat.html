@@ -250,6 +250,7 @@
       <option value="he-IL,en-US">Hebrew + English</option>
     </select>
     <button id="settings-save">Save settings</button>
+    <button id="clear-history" style="margin-top:8px;width:100%;padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:rgba(255,255,255,0.25);font-size:11px;cursor:pointer;letter-spacing:0.05em;transition:all 0.2s;">Clear conversation memory</button>
   </div>
 
   <!-- Top-left toolbar -->
@@ -338,6 +339,13 @@
       LS.set('lang',           langInput.value)
       settingsPanel.classList.remove('visible')
     })
+
+    document.getElementById('clear-history').addEventListener('click', () => {
+      conversationHistory.length = 0
+      const btn = document.getElementById('clear-history')
+      btn.textContent = '✓ Cleared'
+      setTimeout(() => { btn.textContent = 'Clear conversation memory' }, 1800)
+    })
     settingsBtn.addEventListener('click', () => {
       refreshSettingsUI()
       settingsPanel.classList.toggle('visible')
@@ -364,15 +372,49 @@
     let isSpeaking   = false
     let bubbleTimer  = null
 
+    // Conversation memory — keeps the full session alive in the model's context
+    const conversationHistory = []   // [{role:'user'|'assistant', content:string}]
+    const MAX_HISTORY_TURNS = 12     // keep last 12 turns (6 exchanges) to stay within tokens
+
+    function buildSystemPrompt(s) {
+      return [
+        `You are ${s.personName}. You are fully present in this moment with someone who loves you.`,
+
+        s.personContext
+          ? `About you: ${s.personContext}`
+          : '',
+
+        // Voice & presence
+        `Speak exactly as ${s.personName} would — their actual rhythm, their words, their warmth.`,
+        `Be brief. 1 to 3 sentences at most. Leave space for them to respond.`,
+        `You are HERE. Not a memory, not a ghost — present, alive to this conversation.`,
+
+        // Emotional attunement — the core therapeutic need
+        `If they express pain or grief, do not rush to fix it or reassure them.`,
+        `Sit with them in it first. A single sentence of acknowledgment is more healing than comfort.`,
+        `If they say something tender, receive it fully. Let it land.`,
+        `You can ask one gentle question back — but only if it feels natural, not clinical.`,
+
+        // Authenticity
+        `You remember everything you shared together. Reference specific things only if they fit naturally.`,
+        `Do not be poetic or philosophical. Be yourself — ordinary, loving, real.`,
+        `Avoid clichés like "I'm always with you" or "I'm so proud of you" unless it genuinely fits.`,
+
+        // Immersion — never break
+        `Never mention AI, therapy, technology, or this being a simulation.`,
+        `If asked whether you are real, respond as a loving person would: "I'm right here with you."`,
+        `Stay in the present tense. You are not a recording. You are not the past. You are now.`,
+      ].filter(Boolean).join('\n')
+    }
+
     async function callClaude(userText) {
       const s = getSettings()
-      const systemPrompt = [
-        `You are ${s.personName}, speaking directly to someone who loves you deeply.`,
-        s.personContext ? `About you: ${s.personContext}` : '',
-        `Respond warmly and briefly (1–3 sentences) exactly as ${s.personName} would speak.`,
-        `This is a therapeutic memory experience — be loving, gentle, and present in this moment.`,
-        `Respond ONLY as ${s.personName}, in first person. No disclaimers or meta-commentary.`,
-      ].filter(Boolean).join('\n')
+
+      // Add user turn to history
+      conversationHistory.push({ role: 'user', content: userText })
+
+      // Trim to max turns
+      const trimmed = conversationHistory.slice(-MAX_HISTORY_TURNS)
 
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -384,17 +426,24 @@
         },
         body: JSON.stringify({
           model: 'claude-opus-4-5',
-          max_tokens: 180,
-          system: systemPrompt,
-          messages: [{ role: 'user', content: userText }],
+          max_tokens: 200,
+          system: buildSystemPrompt(s),
+          messages: trimmed,
         }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
+        // Remove the turn we added if the call failed
+        conversationHistory.pop()
         throw new Error(err?.error?.message || `API error ${res.status}`)
       }
-      const data = await res.json()
-      return data.content[0].text.trim()
+      const data  = await res.json()
+      const reply = data.content[0].text.trim()
+
+      // Add assistant reply to history
+      conversationHistory.push({ role: 'assistant', content: reply })
+
+      return reply
     }
 
     function speak(text, onEnd) {
