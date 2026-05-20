@@ -84,8 +84,112 @@
     }
     #calm button:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); }
 
-    @keyframes spin    { to { transform: rotate(360deg); } }
-    @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
+    /* ── Voice button ── */
+    #voice-btn {
+      display: none; position: fixed; bottom: 90px; right: 28px; z-index: 15;
+      width: 52px; height: 52px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(0,0,0,0.5); color: rgba(255,255,255,0.7);
+      font-size: 20px; cursor: pointer; backdrop-filter: blur(10px);
+      transition: all 0.3s; align-items: center; justify-content: center;
+    }
+    #voice-btn.visible { display: flex; }
+    #voice-btn.listening {
+      border-color: rgba(255,80,80,0.7) !important;
+      background: rgba(100,0,0,0.5) !important;
+      animation: pulse-red 1s ease-in-out infinite;
+    }
+    #voice-btn.speaking {
+      border-color: rgba(80,180,255,0.7) !important;
+      background: rgba(0,40,100,0.5) !important;
+      animation: pulse-blue 1.5s ease-in-out infinite;
+    }
+
+    /* ── Speech bubble ── */
+    #speech-bubble {
+      display: none; position: fixed; bottom: 160px; right: 28px; z-index: 15;
+      max-width: 300px; padding: 16px 18px;
+      background: rgba(5,5,15,0.85); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 18px; font-family: system-ui, sans-serif;
+      backdrop-filter: blur(16px); animation: fadeIn 0.3s ease;
+    }
+    #speech-bubble.visible { display: block; }
+    .bubble-label { font-size: 9px; color: rgba(255,255,255,0.3); letter-spacing: 0.18em; margin-bottom: 5px; text-transform: uppercase; }
+    #bubble-you-text { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.5; }
+    #bubble-them-wrap { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.07); }
+    #bubble-them-text { font-size: 13px; color: rgba(160,210,255,0.9); line-height: 1.6; }
+    #bubble-thinking {
+      display: inline-flex; gap: 4px; align-items: center; margin-top: 4px;
+    }
+    #bubble-thinking span {
+      width: 5px; height: 5px; border-radius: 50%; background: rgba(150,200,255,0.5);
+      animation: bounce 1.2s ease-in-out infinite;
+    }
+    #bubble-thinking span:nth-child(2) { animation-delay: 0.2s; }
+    #bubble-thinking span:nth-child(3) { animation-delay: 0.4s; }
+
+    /* ── Settings button ── */
+    #settings-btn {
+      display: none; position: fixed; top: 16px; right: 16px; z-index: 16;
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: transparent; color: rgba(255,255,255,0.22);
+      font-size: 15px; cursor: pointer; transition: all 0.2s;
+      align-items: center; justify-content: center;
+    }
+    #settings-btn.visible { display: flex; }
+    #settings-btn:hover { color: rgba(255,255,255,0.5); border-color: rgba(255,255,255,0.2); }
+
+    /* ── Settings panel ── */
+    #settings-panel {
+      display: none; position: fixed; top: 54px; right: 16px; z-index: 20;
+      width: 310px; padding: 22px;
+      background: rgba(8,8,20,0.96); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 18px; backdrop-filter: blur(24px);
+      font-family: system-ui, sans-serif; animation: fadeIn 0.2s ease;
+    }
+    #settings-panel.visible { display: block; }
+    #settings-panel h3 { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7); letter-spacing: 0.06em; margin-bottom: 16px; }
+    #settings-panel label { display: block; font-size: 10px; color: rgba(255,255,255,0.35); letter-spacing: 0.12em; margin: 14px 0 5px; text-transform: uppercase; }
+    #settings-panel input, #settings-panel textarea, #settings-panel select {
+      width: 100%; padding: 9px 11px; border-radius: 9px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.8);
+      font-size: 12px; font-family: system-ui, sans-serif; outline: none;
+      transition: border-color 0.2s;
+    }
+    #settings-panel input:focus, #settings-panel textarea:focus { border-color: rgba(99,102,241,0.5); }
+    #settings-panel textarea { height: 64px; resize: none; }
+    #settings-panel select option { background: #111; }
+    #settings-save {
+      margin-top: 16px; width: 100%; padding: 9px;
+      border-radius: 10px; border: 1px solid rgba(99,102,241,0.35);
+      background: rgba(99,102,241,0.15); color: rgba(160,165,255,0.9);
+      font-size: 12px; cursor: pointer; letter-spacing: 0.05em; transition: all 0.2s;
+    }
+    #settings-save:hover { background: rgba(99,102,241,0.3); }
+
+    /* ── Toolbar (top-left) ── */
+    #toolbar {
+      display: none; position: fixed; top: 14px; left: 14px; z-index: 15;
+      display: none; gap: 8px; align-items: center;
+    }
+    #toolbar.visible { display: flex; }
+    .tb-btn {
+      padding: 6px 13px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(0,0,0,0.4); color: rgba(255,255,255,0.3);
+      font-family: system-ui, sans-serif; font-size: 11px; letter-spacing: 0.06em;
+      cursor: pointer; backdrop-filter: blur(10px); transition: all 0.2s;
+      text-decoration: none; white-space: nowrap;
+    }
+    .tb-btn:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.06); }
+
+    @keyframes spin      { to { transform: rotate(360deg); } }
+    @keyframes fadeIn    { from { opacity: 0 } to { opacity: 1 } }
+    @keyframes pulse-red  { 0%,100%{box-shadow:0 0 0 0 rgba(255,60,60,0)} 50%{box-shadow:0 0 0 8px rgba(255,60,60,0.15)} }
+    @keyframes pulse-blue { 0%,100%{box-shadow:0 0 0 0 rgba(80,160,255,0)} 50%{box-shadow:0 0 0 8px rgba(80,160,255,0.15)} }
+    @keyframes bounce    { 0%,80%,100%{transform:scale(0.7);opacity:0.4} 40%{transform:scale(1);opacity:1} }
   </style>
 </head>
 <body>
@@ -99,19 +203,62 @@
   <div id="error"></div>
 
   <div id="enter-overlay">
-    <div class="enter-btn">Click to walk through</div>
-    <div class="enter-hint">W A S D · mouse to look · ESC to pause · Q for safe space</div>
+    <div class="enter-btn">Enter memory</div>
+    <div class="enter-hint">W A S D · mouse to look · V to speak · Q safe space · ESC pause</div>
   </div>
 
   <div id="hud">
     W / S &nbsp;— forward / back<br>
     A / D &nbsp;— left / right<br>
+    V &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— speak<br>
     Q &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— safe space<br>
     ESC &nbsp;&nbsp;— pause
   </div>
 
   <button id="safe-space">⬡ Safe space</button>
 
+  <!-- Voice button -->
+  <button id="voice-btn" title="Speak (V)">🎤</button>
+
+  <!-- Speech bubble -->
+  <div id="speech-bubble">
+    <div class="bubble-label">You</div>
+    <div id="bubble-you-text"></div>
+    <div id="bubble-them-wrap" style="display:none">
+      <div class="bubble-label" id="bubble-them-label">Response</div>
+      <div id="bubble-thinking"><span></span><span></span><span></span></div>
+      <div id="bubble-them-text" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Settings button -->
+  <button id="settings-btn" title="Voice settings">⚙</button>
+
+  <!-- Settings panel -->
+  <div id="settings-panel">
+    <h3>Voice Settings</h3>
+    <label>Anthropic API Key</label>
+    <input type="password" id="api-key-input" placeholder="sk-ant-…" autocomplete="off" />
+    <label>Person's name</label>
+    <input type="text" id="person-name-input" placeholder="Mom" />
+    <label>How they speak (optional)</label>
+    <textarea id="person-context-input" placeholder="Warm, caring. Speaks Hebrew and English. Uses pet names. Asks about your day."></textarea>
+    <label>Language</label>
+    <select id="lang-input">
+      <option value="he-IL">Hebrew (עברית)</option>
+      <option value="en-US">English</option>
+      <option value="he-IL,en-US">Hebrew + English</option>
+    </select>
+    <button id="settings-save">Save settings</button>
+  </div>
+
+  <!-- Top-left toolbar -->
+  <div id="toolbar">
+    <a id="supersplat-btn" class="tb-btn" href="https://playcanvas.com/supersplat/editor" target="_blank" rel="noopener">Edit in SuperSplat ↗</a>
+    <button id="download-btn" class="tb-btn">⬇ Download PLY</button>
+  </div>
+
+  <!-- Calm / safe space overlay -->
   <div id="calm">
     <h2>You are safe</h2>
     <p>Take a breath. You can return when you're ready.</p>
@@ -130,18 +277,18 @@
     import * as THREE from 'three'
     import * as GS from '/vendor/gaussian-splats-3d.module.js?v=3'
 
-    const params     = new URLSearchParams(location.search)
-    const plyUrl     = params.get('url')    || '/scene.ply'
-    const fileName   = params.get('file')   || 'scene.ply'
-    // Person video params
-    const personUrl  = params.get('person') || null
-    const personX    = parseFloat(params.get('px')     ?? '0')
-    const personY    = parseFloat(params.get('py')     ?? '0')
-    const personZ    = parseFloat(params.get('pz')     ?? '-2')
+    const params      = new URLSearchParams(location.search)
+    const plyUrl      = params.get('url')    || '/scene.ply'
+    const fileName    = params.get('file')   || 'scene.ply'
+    // Person video billboard params
+    const personUrl   = params.get('person') || null
+    const personX     = parseFloat(params.get('px')     ?? '0')
+    const personY     = parseFloat(params.get('py')     ?? '0')
+    const personZ     = parseFloat(params.get('pz')     ?? '-2')
     const personScale = parseFloat(params.get('pscale') ?? '1')
 
-    const setMsg   = t => { document.getElementById('msg').textContent = t }
-    const setBar   = p => { document.getElementById('bar').style.width = p + '%' }
+    const setMsg    = t => { document.getElementById('msg').textContent = t }
+    const setBar    = p => { document.getElementById('bar').style.width = p + '%' }
     const showError = msg => {
       document.getElementById('status').style.display = 'none'
       const el = document.getElementById('error')
@@ -152,53 +299,273 @@
       </div>`
     }
 
-    window.addEventListener('error',             e => showError(e.error?.message || e.message || 'Unknown error'))
+    window.addEventListener('error',              e => showError(e.error?.message || e.message || 'Unknown error'))
     window.addEventListener('unhandledrejection', e => showError(e.reason?.message || String(e.reason)))
 
+    // ── Settings helpers ─────────────────────────────────────────────────────
+    const LS = {
+      get: k         => localStorage.getItem('re-experience-' + k) || '',
+      set: (k, v)    => localStorage.setItem('re-experience-' + k, v),
+    }
+    const getSettings = () => ({
+      apiKey:        LS.get('api-key'),
+      personName:    LS.get('person-name')    || 'the person in this memory',
+      personContext: LS.get('person-context') || '',
+      lang:          LS.get('lang')           || 'he-IL',
+    })
+
+    // Populate settings panel
+    const apiKeyInput        = document.getElementById('api-key-input')
+    const personNameInput    = document.getElementById('person-name-input')
+    const personContextInput = document.getElementById('person-context-input')
+    const langInput          = document.getElementById('lang-input')
+    const settingsBtn        = document.getElementById('settings-btn')
+    const settingsPanel      = document.getElementById('settings-panel')
+
+    const refreshSettingsUI = () => {
+      const s = getSettings()
+      apiKeyInput.value        = s.apiKey
+      personNameInput.value    = s.personName === 'the person in this memory' ? '' : s.personName
+      personContextInput.value = s.personContext
+      langInput.value          = s.lang
+    }
+    refreshSettingsUI()
+
+    document.getElementById('settings-save').addEventListener('click', () => {
+      LS.set('api-key',        apiKeyInput.value.trim())
+      LS.set('person-name',    personNameInput.value.trim() || 'the person in this memory')
+      LS.set('person-context', personContextInput.value.trim())
+      LS.set('lang',           langInput.value)
+      settingsPanel.classList.remove('visible')
+    })
+    settingsBtn.addEventListener('click', () => {
+      refreshSettingsUI()
+      settingsPanel.classList.toggle('visible')
+    })
+    // Close panel when clicking outside
+    document.addEventListener('click', e => {
+      if (!settingsPanel.contains(e.target) && e.target !== settingsBtn) {
+        settingsPanel.classList.remove('visible')
+      }
+    })
+
+    // ── Voice helpers ─────────────────────────────────────────────────────────
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    const voiceBtn      = document.getElementById('voice-btn')
+    const speechBubble  = document.getElementById('speech-bubble')
+    const bubbleYouText = document.getElementById('bubble-you-text')
+    const bubbleThemWrap  = document.getElementById('bubble-them-wrap')
+    const bubbleThemLabel = document.getElementById('bubble-them-label')
+    const bubbleThinking  = document.getElementById('bubble-thinking')
+    const bubbleThemText  = document.getElementById('bubble-them-text')
+
+    let recognizer   = null
+    let isListening  = false
+    let isSpeaking   = false
+    let bubbleTimer  = null
+
+    async function callClaude(userText) {
+      const s = getSettings()
+      const systemPrompt = [
+        `You are ${s.personName}, speaking directly to someone who loves you deeply.`,
+        s.personContext ? `About you: ${s.personContext}` : '',
+        `Respond warmly and briefly (1–3 sentences) exactly as ${s.personName} would speak.`,
+        `This is a therapeutic memory experience — be loving, gentle, and present in this moment.`,
+        `Respond ONLY as ${s.personName}, in first person. No disclaimers or meta-commentary.`,
+      ].filter(Boolean).join('\n')
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': s.apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-opus-4-5',
+          max_tokens: 180,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userText }],
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error?.message || `API error ${res.status}`)
+      }
+      const data = await res.json()
+      return data.content[0].text.trim()
+    }
+
+    function speak(text, onEnd) {
+      window.speechSynthesis.cancel()
+      const utt = new SpeechSynthesisUtterance(text)
+      utt.rate  = 0.88
+      utt.pitch = 1.05
+      // Prefer a warm natural voice
+      const voices = speechSynthesis.getVoices()
+      const warm = voices.find(v =>
+        /Samantha|Karen|Moira|Tessa|Nicky|Victoria|Fiona/i.test(v.name)
+      ) || voices.find(v => v.lang.startsWith('en') && !v.name.includes('Google') && v.localService)
+      if (warm) utt.voice = warm
+      if (onEnd) utt.onend = onEnd
+      utt.onerror = () => { if (onEnd) onEnd() }
+      speechSynthesis.speak(utt)
+    }
+
+    function showBubble(youText) {
+      clearTimeout(bubbleTimer)
+      bubbleYouText.textContent       = youText
+      bubbleThemWrap.style.display    = 'none'
+      bubbleThinking.style.display    = 'none'
+      bubbleThemText.style.display    = 'none'
+      bubbleThemText.textContent      = ''
+      speechBubble.classList.add('visible')
+    }
+
+    function showThinking(personName) {
+      bubbleThemLabel.textContent     = personName.toUpperCase()
+      bubbleThemWrap.style.display    = 'block'
+      bubbleThinking.style.display    = 'inline-flex'
+      bubbleThemText.style.display    = 'none'
+    }
+
+    function showReply(text) {
+      bubbleThinking.style.display    = 'none'
+      bubbleThemText.style.display    = 'block'
+      bubbleThemText.textContent      = text
+      bubbleThemText.style.color      = 'rgba(160,210,255,0.9)'
+    }
+
+    function showError2(text) {
+      bubbleThinking.style.display    = 'none'
+      bubbleThemText.style.display    = 'block'
+      bubbleThemText.textContent      = text
+      bubbleThemText.style.color      = 'rgba(255,150,150,0.7)'
+    }
+
+    function hideBubble(delay = 6000) {
+      clearTimeout(bubbleTimer)
+      bubbleTimer = setTimeout(() => speechBubble.classList.remove('visible'), delay)
+    }
+
+    function setVoiceState(state) {
+      voiceBtn.classList.remove('listening', 'speaking')
+      if (state === 'idle')      { voiceBtn.textContent = '🎤' }
+      if (state === 'listening') { voiceBtn.classList.add('listening'); voiceBtn.textContent = '●' }
+      if (state === 'thinking')  { voiceBtn.textContent = '⋯' }
+      if (state === 'speaking')  { voiceBtn.classList.add('speaking'); voiceBtn.textContent = '◎' }
+    }
+
+    async function startListening() {
+      if (!SpeechRecognition) {
+        showBubble('Speech recognition requires Chrome — please open in Chrome.')
+        hideBubble(4000); return
+      }
+      const s = getSettings()
+      if (!s.apiKey) {
+        settingsPanel.classList.add('visible')
+        apiKeyInput.focus(); return
+      }
+      if (isListening || isSpeaking) {
+        // Cancel current speech
+        window.speechSynthesis.cancel()
+        recognizer?.abort()
+        isListening = isSpeaking = false
+        setVoiceState('idle'); return
+      }
+
+      recognizer = new SpeechRecognition()
+      recognizer.lang = s.lang
+      recognizer.interimResults = false
+      recognizer.maxAlternatives = 1
+
+      recognizer.onstart = () => {
+        isListening = true
+        setVoiceState('listening')
+        exitWalk()  // release pointer lock while speaking
+      }
+
+      recognizer.onresult = async event => {
+        const transcript = event.results[0][0].transcript
+        isListening = false
+        setVoiceState('thinking')
+
+        const settings = getSettings()
+        showBubble(transcript)
+        showThinking(settings.personName)
+
+        try {
+          const reply = await callClaude(transcript)
+          showReply(reply)
+          isSpeaking = true
+          setVoiceState('speaking')
+          speak(reply, () => {
+            isSpeaking = false
+            setVoiceState('idle')
+            hideBubble(5000)
+          })
+        } catch(err) {
+          console.error('[voice]', err)
+          isSpeaking = false
+          setVoiceState('idle')
+          showError2('(Could not respond — check API key in settings ⚙)')
+          hideBubble(5000)
+        }
+      }
+
+      recognizer.onerror = e => {
+        console.error('[voice] recognition error:', e.error)
+        isListening = false
+        setVoiceState('idle')
+        if (e.error === 'no-speech') {
+          speechBubble.classList.remove('visible')
+        }
+      }
+
+      recognizer.onend = () => {
+        if (isListening) { isListening = false; setVoiceState('idle') }
+      }
+
+      recognizer.start()
+    }
+
+    // ── Main ─────────────────────────────────────────────────────────────────
     try {
-      setMsg('Creating renderer…'); setBar(10)
+      setMsg('Creating renderer…'); setBar(5)
 
       const name   = fileName.toLowerCase()
       const format = name.endsWith('.spz')   ? GS.SceneFormat.Spz
                    : name.endsWith('.splat') ? GS.SceneFormat.Splat
                    : GS.SceneFormat.Ply
 
-      setMsg('Downloading scene…'); setBar(15)
-      const fetchRes = await fetch(plyUrl)
-      if (!fetchRes.ok) throw new Error(`HTTP ${fetchRes.status} fetching scene`)
-      const plyArrayBuffer = await fetchRes.arrayBuffer()
-      if (plyArrayBuffer.byteLength === 0) throw new Error('Scene file is empty')
-      const header4 = new TextDecoder().decode(new Uint8Array(plyArrayBuffer, 0, 4))
-      if (!header4.startsWith('ply')) throw new Error(`Not a PLY file (got ${JSON.stringify(header4)})`)
-
-      const localBlobUrl = URL.createObjectURL(
-        new Blob([plyArrayBuffer], { type: 'application/octet-stream' })
-      )
-
-      // ── Viewer (no built-in controls — we drive the camera) ──────────
+      // ── Viewer ──────────────────────────────────────────────────────────────
       const viewer = new GS.Viewer({
-        cameraUp:              [0, -1, 0],
-        initialCameraPosition: [0, -1, 5],
-        initialCameraLookAt:   [0, 0, 0],
-        selfDrivenMode:        true,
-        useBuiltInControls:    false,
-        gpuAcceleratedSort:    false,
-        sharedMemoryForWorkers: false,
-        dynamicScene:          false,
-        rootElement:           document.body,
+        cameraUp:               [0, -1, 0],
+        initialCameraPosition:  [0, -1, 5],
+        initialCameraLookAt:    [0, 0, 0],
+        selfDrivenMode:         true,
+        useBuiltInControls:     false,
+        gpuAcceleratedSort:     true,   // ← big perf win on modern hardware
+        sharedMemoryForWorkers: false,  // needs COOP/COEP on iframe — safe to leave off
+        dynamicScene:           false,
+        rootElement:            document.body,
       })
 
-      setMsg('Parsing splats…'); setBar(30)
-      await viewer.addSplatScene(localBlobUrl, {
+      // ── Stream directly — no full download before render ────────────────────
+      setMsg('Streaming scene…'); setBar(15)
+      await viewer.addSplatScene(plyUrl, {
         splatAlphaRemovalThreshold: 1,
-        showLoadingUI: false,
+        showLoadingUI:  false,
         format,
-        onProgress: p => { if (p > 0) setBar(30 + p * 0.5) }
+        onProgress: p => {
+          if (p > 0) setBar(15 + p * 0.7)
+          if (p >= 0.5) setMsg('Rendering splats…')
+        },
       })
-      URL.revokeObjectURL(localBlobUrl)
 
-      // ── Auto-fit camera to scene centroid ────────────────────────────
-      setMsg('Fitting camera…'); setBar(85)
+      // ── Auto-fit camera to scene centroid ────────────────────────────────────
+      setMsg('Fitting camera…'); setBar(90)
       let cx = 0, cy = 0, cz = 0, span = 5
       try {
         const mesh  = viewer.splatMesh
@@ -220,11 +587,10 @@
         }
       } catch(e) { console.warn('[splat] auto-fit failed:', e) }
 
-      // Position camera at edge of scene looking inward
       viewer.camera.position.set(cx, cy - span * 0.05, cz + span * 1.5)
       viewer.camera.lookAt(cx, cy, cz)
 
-      // ── First-person navigation ───────────────────────────────────────
+      // ── First-person navigation ───────────────────────────────────────────────
       const euler = new THREE.Euler(0, 0, 0, 'YXZ')
       euler.setFromQuaternion(viewer.camera.quaternion, 'YXZ')
       const keys  = {}
@@ -254,7 +620,7 @@
         viewer.camera.quaternion.setFromEuler(euler)
       })
 
-      // Touch look (mobile / Quest browser)
+      // Touch look (mobile / Quest)
       let lt = null
       document.addEventListener('touchstart', e => { lt = e.touches[0] }, { passive: true })
       document.addEventListener('touchmove', e => {
@@ -267,9 +633,9 @@
         lt = t
       }, { passive: true })
 
-      const fwd  = new THREE.Vector3()
-      const rgt  = new THREE.Vector3()
-      const mv   = new THREE.Vector3()
+      const fwd = new THREE.Vector3()
+      const rgt = new THREE.Vector3()
+      const mv  = new THREE.Vector3()
 
       ;(function loop() {
         mv.set(0, 0, 0)
@@ -288,10 +654,14 @@
         requestAnimationFrame(loop)
       })()
 
-      document.addEventListener('keydown', e => { keys[e.code] = true })
-      document.addEventListener('keyup',   e => { keys[e.code] = false })
+      document.addEventListener('keydown', e => {
+        keys[e.code] = true
+        if (e.code === 'KeyQ')   triggerSafe()
+        if (e.code === 'KeyV')   startListening()
+      })
+      document.addEventListener('keyup', e => { keys[e.code] = false })
 
-      // ── Person video billboard ────────────────────────────────────────
+      // ── Person video billboard ─────────────────────────────────────────────
       let personMesh = null
       if (personUrl) {
         try {
@@ -302,7 +672,6 @@
           video.playsInline = true
           video.muted = true
           video.play().catch(() => {})
-          // Unmute after first user gesture (autoplay policy)
           document.addEventListener('click', () => {
             video.muted = false; video.play().catch(() => {})
           }, { once: true })
@@ -317,34 +686,71 @@
             depthWrite: false, alphaTest: 0.05,
           })
           personMesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat)
-          // Position is absolute in scene space
           personMesh.position.set(personX, personY, personZ)
           viewer.threeScene.add(personMesh)
-          console.log('[splat] person added at', personX, personY, personZ)
-        } catch(e) {
-          console.warn('[splat] person video failed:', e)
-        }
+        } catch(e) { console.warn('[splat] person video failed:', e) }
       }
 
-      // Billboard: person always faces camera
+      // Billboard: person always faces camera + glow when speaking
+      const glowMat = personMesh
+        ? new THREE.MeshBasicMaterial({ color: 0x4499ff, transparent: true, opacity: 0, side: THREE.DoubleSide })
+        : null
+      const glowMesh = glowMat
+        ? new THREE.Mesh(new THREE.PlaneGeometry((0.85 * personScale) + 0.1, (1.7 * personScale) + 0.1), glowMat)
+        : null
+      if (glowMesh) {
+        glowMesh.position.set(personX, personY, personZ - 0.01)
+        viewer.threeScene.add(glowMesh)
+      }
+
       ;(function billboard() {
         if (personMesh) personMesh.quaternion.copy(viewer.camera.quaternion)
+        if (glowMesh)   glowMesh.quaternion.copy(viewer.camera.quaternion)
+        // Pulse glow when speaking
+        if (glowMat) {
+          const target = isSpeaking ? 0.15 : 0
+          glowMat.opacity += (target - glowMat.opacity) * 0.08
+        }
         requestAnimationFrame(billboard)
       })()
 
-      // ── Safe space ────────────────────────────────────────────────────
-      const triggerSafe = () => {
-        exitWalk()
-        calmEl.classList.add('visible')
-      }
+      // ── Safe space ─────────────────────────────────────────────────────────
+      const triggerSafe = () => { exitWalk(); calmEl.classList.add('visible') }
       safeBtn.addEventListener('click', triggerSafe)
-      document.addEventListener('keydown', e => { if (e.code === 'KeyQ') triggerSafe() })
       document.getElementById('calm-return').addEventListener('click', () => {
         calmEl.classList.remove('visible')
         setTimeout(enterWalk, 400)
       })
 
-      // ── Go! ───────────────────────────────────────────────────────────
+      // ── Voice & toolbar ────────────────────────────────────────────────────
+      voiceBtn.classList.add('visible')
+      voiceBtn.addEventListener('click', startListening)
+
+      settingsBtn.classList.add('visible')
+
+      const toolbar = document.getElementById('toolbar')
+      toolbar.classList.add('visible')
+
+      // Download PLY button
+      document.getElementById('download-btn').addEventListener('click', async () => {
+        const btn = document.getElementById('download-btn')
+        btn.textContent = '⋯ Downloading…'
+        btn.style.opacity = '0.5'
+        try {
+          const r = await fetch(plyUrl)
+          const blob = await r.blob()
+          const a = document.createElement('a')
+          a.href = URL.createObjectURL(blob)
+          a.download = fileName || 'scene.ply'
+          a.click()
+          URL.revokeObjectURL(a.href)
+        } finally {
+          btn.textContent = '⬇ Download PLY'
+          btn.style.opacity = ''
+        }
+      })
+
+      // ── Go! ───────────────────────────────────────────────────────────────
       setBar(100)
       document.getElementById('status').style.display = 'none'
       safeBtn.classList.add('visible')

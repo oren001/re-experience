@@ -22,7 +22,7 @@ export function SplatViewer({ source, fileName = '', onBack }: Props) {
           ← Back
         </button>
         <span className="text-white/20 text-xs tracking-wider">
-          Drag to orbit · scroll to zoom · right-drag to pan
+          W A S D to walk · mouse to look · V to speak · Q safe space
         </span>
       </div>
 
