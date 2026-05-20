@@ -38,12 +38,29 @@
     #safe-btn.visible { display: block; }
 
     /* ── Calm overlay ── */
-    #calm { display: none; position: fixed; inset: 0; z-index: 50; background: radial-gradient(ellipse at 50% 40%, #0d1f3c 0%, #050810 100%); flex-direction: column; align-items: center; justify-content: center; font-family: system-ui, sans-serif; color: rgba(255,255,255,0.6); gap: 20px; animation: fadeIn 0.8s ease; }
+    @keyframes calm-breathe {
+      0%,100% { transform: scale(0.78); opacity: 0.1; }
+      45%,55% { transform: scale(1.32); opacity: 0.42; }
+    }
+    #calm { display: none; position: fixed; inset: 0; z-index: 50;
+      background: radial-gradient(ellipse at 50% 38%, #091825 0%, #030608 100%);
+      flex-direction: column; align-items: center; justify-content: center;
+      font-family: system-ui, sans-serif; color: rgba(255,255,255,0.6);
+      gap: 0; animation: fadeIn 0.9s ease; }
     #calm.visible { display: flex; }
-    #calm h2 { font-size: 1.5rem; font-weight: 200; letter-spacing: 0.22em; }
-    #calm p { font-size: 13px; letter-spacing: 0.1em; opacity: 0.45; }
-    #calm button { margin-top: 16px; padding: 12px 36px; border: 1px solid rgba(255,255,255,0.12); border-radius: 40px; background: transparent; color: rgba(255,255,255,0.38); font-size: 12px; letter-spacing: 0.12em; cursor: pointer; transition: all 0.3s; }
-    #calm button:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); }
+    #calm-orb { width: 140px; height: 140px; border-radius: 50%; flex-shrink: 0;
+      background: radial-gradient(circle, rgba(80,140,255,0.32) 0%, rgba(40,80,200,0.1) 55%, transparent 78%);
+      animation: calm-breathe 9s ease-in-out infinite; margin-bottom: 36px; }
+    #calm h2 { font-size: 1.4rem; font-weight: 200; letter-spacing: 0.24em; margin: 0; }
+    #calm-breath-text { margin: 10px 0 0; font-size: 12px; letter-spacing: 0.18em;
+      color: rgba(160,200,255,0.4); min-height: 18px; transition: opacity 0.6s; text-transform: lowercase; }
+    #calm-hint { margin: 6px 0 28px; font-size: 11px; letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.16); }
+    .calm-btn { padding: 11px 34px; border: 1px solid rgba(255,255,255,0.1); border-radius: 40px;
+      background: transparent; color: rgba(255,255,255,0.32); font-size: 12px;
+      letter-spacing: 0.12em; cursor: pointer; transition: all 0.3s; margin: 4px 0; }
+    .calm-btn:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.6); }
+    .calm-btn.leave { color: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.06); font-size: 11px; }
 
     /* ── Voice button ── */
     #voice-btn { display: none; position: fixed; bottom: 90px; right: 28px; z-index: 15; width: 52px; height: 52px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.5); color: rgba(255,255,255,0.7); font-size: 20px; cursor: pointer; backdrop-filter: blur(10px); transition: all 0.3s; align-items: center; justify-content: center; }
@@ -165,9 +182,12 @@
   </div>
 
   <div id="calm">
-    <h2>You are safe</h2>
-    <p>Take a breath. You can return when you're ready.</p>
-    <button id="calm-return">Return to memory</button>
+    <div id="calm-orb"></div>
+    <h2>You are safe.</h2>
+    <div id="calm-breath-text">breathe in</div>
+    <p id="calm-hint">Press and hold — you can stay here as long as you need.</p>
+    <button class="calm-btn" id="calm-return">Return to memory</button>
+    <button class="calm-btn leave" id="calm-leave">Leave for today</button>
   </div>
 
   <script type="importmap">
@@ -493,11 +513,43 @@
 
     enterOverlay.addEventListener('click', enterWalk)
 
+    let hasGreeted = false
+
     document.addEventListener('pointerlockchange', () => {
       walking = document.pointerLockElement === document.body
       enterOverlay.classList.toggle('visible', !walking)
       hud.classList.toggle('visible', walking)
+
+      // Auto-greet: first time user walks in, person says hello
+      if (walking && !hasGreeted) {
+        hasGreeted = true
+        const s = getSettings()
+        if (s.apiKey && s.name !== 'the person in this memory') {
+          setTimeout(() => autoGreet(s), 1400)
+        }
+      }
     })
+
+    async function autoGreet(s) {
+      try {
+        const reply = await callClaude(
+          '(The person has just walked in — you notice them. Greet them in one quiet, warm sentence, exactly as yourself. Nothing theatrical.)'
+        )
+        document.getElementById('bubble-you-text').textContent = ''
+        document.getElementById('bubble-them-wrap').style.display = 'block'
+        document.getElementById('bubble-thinking').style.display = 'none'
+        document.getElementById('bubble-them-label').textContent = s.name.toUpperCase()
+        const rt = document.getElementById('bubble-them-text')
+        rt.style.display = 'block'; rt.textContent = reply; rt.style.color = 'rgba(160,210,255,0.9)'
+        speechBubble.classList.add('visible')
+        isSpeaking = true; setVoiceState('speaking')
+        speak(reply, () => {
+          isSpeaking = false; setVoiceState('idle')
+          clearTimeout(bubbleTimer)
+          bubbleTimer = setTimeout(() => speechBubble.classList.remove('visible'), 7000)
+        })
+      } catch { /* no API key or network issue — silently skip */ }
+    }
 
     document.addEventListener('mousemove', e => {
       if (!walking) return
@@ -534,10 +586,44 @@
     })
     document.addEventListener('keyup', e => { keys[e.code] = false })
 
-    // ── Safe space ────────────────────────────────────────────────────────────
-    const triggerSafe = () => { exitWalk(); calmEl.classList.add('visible') }
+    // ── Safe space with guided breathing ─────────────────────────────────────
+    let breathStop = null
+    const breathPhases = [
+      { text: 'breathe in',  ms: 4200 },
+      { text: 'hold',        ms: 1800 },
+      { text: 'breathe out', ms: 4200 },
+      { text: '',            ms: 1800 },
+    ]
+    function startBreathing() {
+      const el = document.getElementById('calm-breath-text')
+      let running = true
+      breathStop = () => { running = false }
+      ;(async () => {
+        while (running) {
+          for (const p of breathPhases) {
+            if (!running) break
+            el.textContent = p.text
+            await new Promise(r => setTimeout(r, p.ms))
+          }
+        }
+      })()
+    }
+    function stopBreathing() { if (breathStop) { breathStop(); breathStop = null } }
+
+    const triggerSafe = () => { exitWalk(); calmEl.classList.add('visible'); startBreathing() }
     safeBtn.addEventListener('click', triggerSafe)
-    document.getElementById('calm-return').addEventListener('click', () => { calmEl.classList.remove('visible'); setTimeout(enterWalk, 400) })
+    document.getElementById('calm-return').addEventListener('click', () => {
+      stopBreathing()
+      calmEl.classList.remove('visible')
+      setTimeout(enterWalk, 400)
+    })
+    document.getElementById('calm-leave').addEventListener('click', () => {
+      stopBreathing()
+      calmEl.classList.remove('visible')
+      window.parent?.postMessage({ type: 're-exp-leave' }, '*')
+      // Fall back: navigate back if not in an iframe
+      setTimeout(() => { window.history.back() }, 100)
+    })
 
     // ── Toolbar buttons ───────────────────────────────────────────────────────
     voiceBtn.addEventListener('click', startListening)

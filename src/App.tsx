@@ -5,9 +5,11 @@ import { MinimalHUD } from '@/components/MinimalHUD'
 import { TherapistOverlay } from '@/components/TherapistOverlay'
 import { SplatViewer } from '@/components/SplatViewer'
 import { SceneLibrary } from '@/components/SceneLibrary'
+import { PreparationScreen } from '@/components/PreparationScreen'
+import { GroundingScreen } from '@/components/GroundingScreen'
 import { useTherapistStore } from '@/store/therapistStore'
 
-type AppState = 'library' | 'upload' | 'exploring' | 'splat'
+type AppState = 'library' | 'upload' | 'exploring' | 'prepare' | 'splat' | 'grounding'
 
 /** Babylon canvas + engine — unmounts (and disposes WebGL context) when not needed */
 function BabylonWorld({
@@ -60,21 +62,34 @@ function BabylonWorld({
 }
 
 export default function App() {
-  const [appState, setAppState] = useState<AppState>('library')
+  const [appState, setAppState]       = useState<AppState>('library')
   const [splatSource, setSplatSource] = useState<string>('')
   const [splatFileName, setSplatFileName] = useState<string>('')
 
+  // Library → Preparation ritual → Splat viewer
   const handleOpenSplat = (src: string, name: string) => {
     setSplatSource(src)
     setSplatFileName(name)
+    setAppState('prepare')
+  }
+
+  const handleEnterFromPrep = () => {
     setAppState('splat')
   }
 
+  const handleBackFromPrep = () => {
+    setSplatSource('')
+    setSplatFileName('')
+    setAppState('library')
+  }
+
+  // Splat viewer → Grounding moment → Library
   const handleBackFromSplat = () => {
-    // Revoke blob URL to free memory if it's a blob we created
-    if (splatSource.startsWith('blob:')) {
-      URL.revokeObjectURL(splatSource)
-    }
+    if (splatSource.startsWith('blob:')) URL.revokeObjectURL(splatSource)
+    setAppState('grounding')
+  }
+
+  const handleContinueFromGrounding = () => {
     setSplatSource('')
     setSplatFileName('')
     setAppState('library')
@@ -82,7 +97,8 @@ export default function App() {
 
   return (
     <div className="w-full h-full relative bg-slate-950 overflow-hidden">
-      {/* Library — default home screen, no Babylon needed */}
+
+      {/* ── Library — default home screen ───────────────────────── */}
       {appState === 'library' && (
         <SceneLibrary
           onOpen={handleOpenSplat}
@@ -90,7 +106,30 @@ export default function App() {
         />
       )}
 
-      {/* Babylon world — unmounts entirely when viewing a splat or library, freeing the WebGL context */}
+      {/* ── Preparation ritual — breathe before entering ─────────── */}
+      {appState === 'prepare' && (
+        <PreparationScreen
+          sceneName={splatFileName}
+          onEnter={handleEnterFromPrep}
+          onBack={handleBackFromPrep}
+        />
+      )}
+
+      {/* ── Gaussian Splat viewer ────────────────────────────────── */}
+      {appState === 'splat' && (
+        <SplatViewer
+          source={splatSource}
+          fileName={splatFileName}
+          onBack={handleBackFromSplat}
+        />
+      )}
+
+      {/* ── Grounding moment — after leaving a scene ─────────────── */}
+      {appState === 'grounding' && (
+        <GroundingScreen onContinue={handleContinueFromGrounding} />
+      )}
+
+      {/* ── Babylon world — only mounts for photo upload flow ────── */}
       {(appState === 'upload' || appState === 'exploring') && (
         <BabylonWorld
           appState={appState}
@@ -100,14 +139,6 @@ export default function App() {
         />
       )}
 
-      {/* Gaussian Splat viewer — gets its own clean WebGL context */}
-      {appState === 'splat' && (
-        <SplatViewer
-          source={splatSource}
-          fileName={splatFileName}
-          onBack={handleBackFromSplat}
-        />
-      )}
     </div>
   )
 }

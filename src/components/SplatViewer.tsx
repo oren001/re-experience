@@ -9,18 +9,23 @@ interface Props {
 export function SplatViewer({ source, fileName = '', onBack }: Props) {
   const viewerUrl = `/splat.html?url=${encodeURIComponent(source)}&file=${encodeURIComponent(fileName)}`
 
-  // Listen for thumbnail postMessages from the iframe and persist them
-  // so SceneLibrary can show real scene previews on the cards.
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      if (e.data?.type !== 're-exp-thumbnail') return
-      const { url, thumb } = e.data as { url: string; thumb: string }
-      if (!url || !thumb) return
-      try { localStorage.setItem(`re-exp-thumb:${url}`, thumb) } catch { /* quota full */ }
+      // Thumbnail auto-captured by splat.html — store for library card preview
+      if (e.data?.type === 're-exp-thumbnail') {
+        const { url, thumb } = e.data as { url: string; thumb: string }
+        if (url && thumb) {
+          try { localStorage.setItem(`re-exp-thumb:${url}`, thumb) } catch { /* quota */ }
+        }
+      }
+      // "Leave for today" button inside the safe space — triggers the back handler
+      if (e.data?.type === 're-exp-leave') {
+        onBack()
+      }
     }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
-  }, [])
+  }, [onBack])
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col" style={{ background: '#080810' }}>
