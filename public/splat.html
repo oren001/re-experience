@@ -182,12 +182,18 @@
 
   <script type="module">
     import * as THREE from 'three'
-    import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark'
+    import { SparkRenderer, SplatMesh, SplatFileType } from '@sparkjsdev/spark'
 
     // ── URL params ────────────────────────────────────────────────────────────
     const params     = new URLSearchParams(location.search)
     const splatUrl   = params.get('url')  || ''
     const fileName   = params.get('file') || 'scene.splat'
+
+    // Detect format from fileName so proxy URLs (which end in /read-scene?key=…)
+    // are handled correctly — Spark can't sniff the extension from a query param
+    const ext = fileName.split('.').pop().toLowerCase()
+    const FILE_TYPE_MAP = { ply: SplatFileType.PLY, spz: SplatFileType.SPZ, splat: SplatFileType.SPLAT, ksplat: SplatFileType.KSPLAT }
+    const fileType = FILE_TYPE_MAP[ext] ?? SplatFileType.SPLAT
     const personUrl  = params.get('person') || null
     const personX    = parseFloat(params.get('px')     ?? '0')
     const personY    = parseFloat(params.get('py')     ?? '0')
@@ -390,6 +396,7 @@
 
     const splat = new SplatMesh({
       url: splatUrl,
+      fileType,
       onLoad: () => {
         setBar(90)
         setMsg('Ready')
