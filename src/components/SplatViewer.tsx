@@ -30,7 +30,7 @@ export function SplatViewer({ source, fileName = '', onBack }: Props) {
       <iframe
         src={viewerUrl}
         className="flex-1 w-full border-0"
-        allow="fullscreen"
+        allow="fullscreen; pointer-lock"
         title="Memory Viewer"
       />
     </div>

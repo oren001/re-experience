@@ -152,7 +152,7 @@ function PortalCard({
             background: 'rgba(255,255,255,0.05)',
             border: `1px solid ${p.btnBorder}`,
           }}>
-            {scene.fileName.endsWith('.spz') ? 'SPZ' : 'PLY'}
+            {scene.fileName.endsWith('.spz') ? 'SPZ' : scene.fileName.endsWith('.splat') ? 'SPLAT' : 'PLY'}
           </span>
           {!isSeed && (
             <button

@@ -7,196 +7,102 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; background: #080810; overflow: hidden; }
+    canvas { display: block; position: fixed; inset: 0; }
 
+    /* ── Loading ── */
     #status {
       position: fixed; inset: 0; display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 20px;
       color: rgba(255,255,255,0.5); font-family: system-ui, sans-serif;
-      font-size: 13px; letter-spacing: 0.06em; pointer-events: none; z-index: 10;
+      font-size: 13px; letter-spacing: 0.06em; z-index: 10; pointer-events: none;
     }
-    #spinner {
-      width: 32px; height: 32px; border: 2px solid rgba(255,255,255,0.08);
-      border-top-color: rgba(255,255,255,0.5); border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
+    #spinner { width: 32px; height: 32px; border: 2px solid rgba(255,255,255,0.08); border-top-color: rgba(255,255,255,0.5); border-radius: 50%; animation: spin 1s linear infinite; }
     #bar-wrap { width: 180px; height: 2px; background: rgba(255,255,255,0.08); border-radius: 2px; }
     #bar { height: 100%; border-radius: 2px; background: rgba(255,255,255,0.4); width: 0; transition: width 0.4s; }
-    #msg { text-align: center; }
 
-    #error {
-      display: none; position: fixed; inset: 0; align-items: center; justify-content: center;
-      flex-direction: column; gap: 12px; z-index: 20; color: #fca5a5;
-      font-family: system-ui, sans-serif; font-size: 13px; background: #080810;
-    }
+    /* ── Error ── */
+    #error { display: none; position: fixed; inset: 0; align-items: center; justify-content: center; flex-direction: column; gap: 12px; z-index: 20; color: #fca5a5; font-family: system-ui, sans-serif; font-size: 13px; background: #080810; }
 
-    /* ── Click-to-enter overlay ── */
-    #enter-overlay {
-      display: none; position: fixed; inset: 0; z-index: 15;
-      align-items: center; justify-content: center; flex-direction: column; gap: 16px;
-      background: rgba(0,0,0,0.35); cursor: pointer;
-      font-family: system-ui, sans-serif;
-    }
+    /* ── Enter overlay ── */
+    #enter-overlay { display: none; position: fixed; inset: 0; z-index: 15; align-items: center; justify-content: center; flex-direction: column; gap: 16px; background: rgba(0,0,0,0.35); cursor: pointer; font-family: system-ui, sans-serif; }
     #enter-overlay.visible { display: flex; }
-    #enter-overlay .enter-btn {
-      padding: 16px 44px; border: 1px solid rgba(255,255,255,0.28); border-radius: 40px;
-      color: rgba(255,255,255,0.9); font-size: 15px; letter-spacing: 0.14em;
-      background: rgba(255,255,255,0.08); backdrop-filter: blur(10px);
-    }
-    #enter-overlay .enter-hint {
-      font-size: 11px; color: rgba(255,255,255,0.28); letter-spacing: 0.1em;
-    }
+    #enter-overlay .enter-btn { padding: 16px 44px; border: 1px solid rgba(255,255,255,0.28); border-radius: 40px; color: rgba(255,255,255,0.9); font-size: 15px; letter-spacing: 0.14em; background: rgba(255,255,255,0.08); backdrop-filter: blur(10px); }
+    #enter-overlay .enter-hint { font-size: 11px; color: rgba(255,255,255,0.28); letter-spacing: 0.1em; text-align: center; }
 
-    /* ── Movement HUD ── */
-    #hud {
-      display: none; position: fixed; bottom: 28px; left: 28px; z-index: 15;
-      font-family: monospace; font-size: 11px; color: rgba(255,255,255,0.25);
-      letter-spacing: 0.06em; line-height: 1.9; pointer-events: none;
-    }
+    /* ── HUD ── */
+    #hud { display: none; position: fixed; bottom: 28px; left: 28px; z-index: 15; font-family: monospace; font-size: 11px; color: rgba(255,255,255,0.25); letter-spacing: 0.06em; line-height: 1.9; pointer-events: none; }
     #hud.visible { display: block; }
 
     /* ── Safe space button ── */
-    #safe-space {
-      display: none; position: fixed; bottom: 28px; right: 28px; z-index: 15;
-      padding: 12px 22px; border: 1px solid rgba(100,180,255,0.25); border-radius: 40px;
-      background: rgba(0,20,60,0.55); color: rgba(150,210,255,0.75);
-      font-family: system-ui, sans-serif; font-size: 12px; letter-spacing: 0.1em;
-      cursor: pointer; backdrop-filter: blur(10px); transition: all 0.3s;
-    }
-    #safe-space.visible { display: block; }
-    #safe-space:hover { background: rgba(0,50,120,0.8); border-color: rgba(120,200,255,0.5); }
+    #safe-btn { display: none; position: fixed; bottom: 28px; right: 28px; z-index: 15; padding: 12px 22px; border: 1px solid rgba(100,180,255,0.25); border-radius: 40px; background: rgba(0,20,60,0.55); color: rgba(150,210,255,0.75); font-family: system-ui, sans-serif; font-size: 12px; letter-spacing: 0.1em; cursor: pointer; backdrop-filter: blur(10px); transition: all 0.3s; }
+    #safe-btn.visible { display: block; }
 
     /* ── Calm overlay ── */
-    #calm {
-      display: none; position: fixed; inset: 0; z-index: 50;
-      background: radial-gradient(ellipse at 50% 40%, #0d1f3c 0%, #050810 100%);
-      flex-direction: column; align-items: center; justify-content: center;
-      font-family: system-ui, sans-serif; color: rgba(255,255,255,0.6); gap: 20px;
-      animation: fadeIn 0.8s ease;
-    }
+    #calm { display: none; position: fixed; inset: 0; z-index: 50; background: radial-gradient(ellipse at 50% 40%, #0d1f3c 0%, #050810 100%); flex-direction: column; align-items: center; justify-content: center; font-family: system-ui, sans-serif; color: rgba(255,255,255,0.6); gap: 20px; animation: fadeIn 0.8s ease; }
     #calm.visible { display: flex; }
     #calm h2 { font-size: 1.5rem; font-weight: 200; letter-spacing: 0.22em; }
-    #calm p  { font-size: 13px; letter-spacing: 0.1em; opacity: 0.45; }
-    #calm button {
-      margin-top: 16px; padding: 12px 36px;
-      border: 1px solid rgba(255,255,255,0.12); border-radius: 40px;
-      background: transparent; color: rgba(255,255,255,0.38);
-      font-size: 12px; letter-spacing: 0.12em; cursor: pointer; transition: all 0.3s;
-    }
+    #calm p { font-size: 13px; letter-spacing: 0.1em; opacity: 0.45; }
+    #calm button { margin-top: 16px; padding: 12px 36px; border: 1px solid rgba(255,255,255,0.12); border-radius: 40px; background: transparent; color: rgba(255,255,255,0.38); font-size: 12px; letter-spacing: 0.12em; cursor: pointer; transition: all 0.3s; }
     #calm button:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); }
 
     /* ── Voice button ── */
-    #voice-btn {
-      display: none; position: fixed; bottom: 90px; right: 28px; z-index: 15;
-      width: 52px; height: 52px; border-radius: 50%;
-      border: 1px solid rgba(255,255,255,0.15);
-      background: rgba(0,0,0,0.5); color: rgba(255,255,255,0.7);
-      font-size: 20px; cursor: pointer; backdrop-filter: blur(10px);
-      transition: all 0.3s; align-items: center; justify-content: center;
-    }
+    #voice-btn { display: none; position: fixed; bottom: 90px; right: 28px; z-index: 15; width: 52px; height: 52px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.5); color: rgba(255,255,255,0.7); font-size: 20px; cursor: pointer; backdrop-filter: blur(10px); transition: all 0.3s; align-items: center; justify-content: center; }
     #voice-btn.visible { display: flex; }
-    #voice-btn.listening {
-      border-color: rgba(255,80,80,0.7) !important;
-      background: rgba(100,0,0,0.5) !important;
-      animation: pulse-red 1s ease-in-out infinite;
-    }
-    #voice-btn.speaking {
-      border-color: rgba(80,180,255,0.7) !important;
-      background: rgba(0,40,100,0.5) !important;
-      animation: pulse-blue 1.5s ease-in-out infinite;
-    }
+    #voice-btn.listening { border-color: rgba(255,80,80,0.7) !important; background: rgba(100,0,0,0.5) !important; animation: pulse-red 1s ease-in-out infinite; }
+    #voice-btn.speaking { border-color: rgba(80,180,255,0.7) !important; background: rgba(0,40,100,0.5) !important; animation: pulse-blue 1.5s ease-in-out infinite; }
 
     /* ── Speech bubble ── */
-    #speech-bubble {
-      display: none; position: fixed; bottom: 160px; right: 28px; z-index: 15;
-      max-width: 300px; padding: 16px 18px;
-      background: rgba(5,5,15,0.85); border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 18px; font-family: system-ui, sans-serif;
-      backdrop-filter: blur(16px); animation: fadeIn 0.3s ease;
-    }
+    #speech-bubble { display: none; position: fixed; bottom: 160px; right: 28px; z-index: 15; max-width: 300px; padding: 16px 18px; background: rgba(5,5,15,0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 18px; font-family: system-ui, sans-serif; backdrop-filter: blur(16px); animation: fadeIn 0.3s ease; }
     #speech-bubble.visible { display: block; }
     .bubble-label { font-size: 9px; color: rgba(255,255,255,0.3); letter-spacing: 0.18em; margin-bottom: 5px; text-transform: uppercase; }
     #bubble-you-text { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.5; }
     #bubble-them-wrap { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.07); }
     #bubble-them-text { font-size: 13px; color: rgba(160,210,255,0.9); line-height: 1.6; }
-    #bubble-thinking {
-      display: inline-flex; gap: 4px; align-items: center; margin-top: 4px;
-    }
-    #bubble-thinking span {
-      width: 5px; height: 5px; border-radius: 50%; background: rgba(150,200,255,0.5);
-      animation: bounce 1.2s ease-in-out infinite;
-    }
+    #bubble-thinking { display: inline-flex; gap: 4px; align-items: center; margin-top: 4px; }
+    #bubble-thinking span { width: 5px; height: 5px; border-radius: 50%; background: rgba(150,200,255,0.5); animation: bounce 1.2s ease-in-out infinite; }
     #bubble-thinking span:nth-child(2) { animation-delay: 0.2s; }
     #bubble-thinking span:nth-child(3) { animation-delay: 0.4s; }
 
     /* ── Settings button ── */
-    #settings-btn {
-      display: none; position: fixed; top: 16px; right: 16px; z-index: 16;
-      width: 32px; height: 32px; border-radius: 50%;
-      border: 1px solid rgba(255,255,255,0.08);
-      background: transparent; color: rgba(255,255,255,0.22);
-      font-size: 15px; cursor: pointer; transition: all 0.2s;
-      align-items: center; justify-content: center;
-    }
+    #settings-btn { display: none; position: fixed; top: 16px; right: 16px; z-index: 16; width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.08); background: transparent; color: rgba(255,255,255,0.22); font-size: 15px; cursor: pointer; transition: all 0.2s; align-items: center; justify-content: center; }
     #settings-btn.visible { display: flex; }
     #settings-btn:hover { color: rgba(255,255,255,0.5); border-color: rgba(255,255,255,0.2); }
 
     /* ── Settings panel ── */
-    #settings-panel {
-      display: none; position: fixed; top: 54px; right: 16px; z-index: 20;
-      width: 310px; padding: 22px;
-      background: rgba(8,8,20,0.96); border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 18px; backdrop-filter: blur(24px);
-      font-family: system-ui, sans-serif; animation: fadeIn 0.2s ease;
-    }
+    #settings-panel { display: none; position: fixed; top: 54px; right: 16px; z-index: 20; width: 310px; padding: 22px; background: rgba(8,8,20,0.97); border: 1px solid rgba(255,255,255,0.1); border-radius: 18px; backdrop-filter: blur(24px); font-family: system-ui, sans-serif; animation: fadeIn 0.2s ease; }
     #settings-panel.visible { display: block; }
     #settings-panel h3 { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7); letter-spacing: 0.06em; margin-bottom: 16px; }
     #settings-panel label { display: block; font-size: 10px; color: rgba(255,255,255,0.35); letter-spacing: 0.12em; margin: 14px 0 5px; text-transform: uppercase; }
-    #settings-panel input, #settings-panel textarea, #settings-panel select {
-      width: 100%; padding: 9px 11px; border-radius: 9px;
-      border: 1px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.8);
-      font-size: 12px; font-family: system-ui, sans-serif; outline: none;
-      transition: border-color 0.2s;
-    }
-    #settings-panel input:focus, #settings-panel textarea:focus { border-color: rgba(99,102,241,0.5); }
+    #settings-panel input[type=text], #settings-panel input[type=password], #settings-panel textarea, #settings-panel select { width: 100%; padding: 9px 11px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.8); font-size: 12px; font-family: system-ui, sans-serif; outline: none; transition: border-color 0.2s; }
+    #settings-panel input[type=text]:focus, #settings-panel input[type=password]:focus, #settings-panel textarea:focus { border-color: rgba(99,102,241,0.5); }
     #settings-panel textarea { height: 64px; resize: none; }
     #settings-panel select option { background: #111; }
-    #settings-save {
-      margin-top: 16px; width: 100%; padding: 9px;
-      border-radius: 10px; border: 1px solid rgba(99,102,241,0.35);
-      background: rgba(99,102,241,0.15); color: rgba(160,165,255,0.9);
-      font-size: 12px; cursor: pointer; letter-spacing: 0.05em; transition: all 0.2s;
-    }
+    .checkbox-row { display: flex; align-items: center; gap: 10px; margin: 8px 0 0; cursor: pointer; }
+    .checkbox-row input[type=checkbox] { width: auto; padding: 0; border: none; background: none; cursor: pointer; accent-color: #6366f1; }
+    .checkbox-row span { font-size: 12px; color: rgba(255,255,255,0.5); }
+    #settings-save { margin-top: 16px; width: 100%; padding: 9px; border-radius: 10px; border: 1px solid rgba(99,102,241,0.35); background: rgba(99,102,241,0.15); color: rgba(160,165,255,0.9); font-size: 12px; cursor: pointer; letter-spacing: 0.05em; transition: all 0.2s; }
     #settings-save:hover { background: rgba(99,102,241,0.3); }
+    #clear-history { margin-top: 8px; width: 100%; padding: 9px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: transparent; color: rgba(255,255,255,0.25); font-size: 11px; cursor: pointer; letter-spacing: 0.05em; transition: all 0.2s; }
 
-    /* ── Toolbar (top-left) ── */
-    #toolbar {
-      display: none; position: fixed; top: 14px; left: 14px; z-index: 15;
-      display: none; gap: 8px; align-items: center;
-    }
+    /* ── Toolbar ── */
+    #toolbar { display: none; position: fixed; top: 14px; left: 14px; z-index: 15; gap: 8px; align-items: center; }
     #toolbar.visible { display: flex; }
-    .tb-btn {
-      padding: 6px 13px; border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.08);
-      background: rgba(0,0,0,0.4); color: rgba(255,255,255,0.3);
-      font-family: system-ui, sans-serif; font-size: 11px; letter-spacing: 0.06em;
-      cursor: pointer; backdrop-filter: blur(10px); transition: all 0.2s;
-      text-decoration: none; white-space: nowrap;
-    }
+    .tb-btn { padding: 6px 13px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.5); color: rgba(255,255,255,0.3); font-family: system-ui, sans-serif; font-size: 11px; letter-spacing: 0.06em; cursor: pointer; backdrop-filter: blur(10px); transition: all 0.2s; text-decoration: none; white-space: nowrap; }
     .tb-btn:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.06); }
 
-    @keyframes spin      { to { transform: rotate(360deg); } }
-    @keyframes fadeIn    { from { opacity: 0 } to { opacity: 1 } }
+    @keyframes spin       { to { transform: rotate(360deg); } }
+    @keyframes fadeIn     { from { opacity: 0 } to { opacity: 1 } }
     @keyframes pulse-red  { 0%,100%{box-shadow:0 0 0 0 rgba(255,60,60,0)} 50%{box-shadow:0 0 0 8px rgba(255,60,60,0.15)} }
     @keyframes pulse-blue { 0%,100%{box-shadow:0 0 0 0 rgba(80,160,255,0)} 50%{box-shadow:0 0 0 8px rgba(80,160,255,0.15)} }
-    @keyframes bounce    { 0%,80%,100%{transform:scale(0.7);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+    @keyframes bounce     { 0%,80%,100%{transform:scale(0.7);opacity:0.4} 40%{transform:scale(1);opacity:1} }
   </style>
 </head>
 <body>
+
   <div id="status">
     <div id="spinner"></div>
     <div>
-      <div id="msg">Initialising…</div>
+      <div id="msg">Loading scene…</div>
       <div id="bar-wrap" style="margin-top:12px"><div id="bar"></div></div>
     </div>
   </div>
@@ -208,19 +114,17 @@
   </div>
 
   <div id="hud">
-    W / S &nbsp;— forward / back<br>
-    A / D &nbsp;— left / right<br>
-    V &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— speak<br>
-    Q &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— safe space<br>
-    ESC &nbsp;&nbsp;— pause
+    W / S — forward / back<br>
+    A / D — left / right<br>
+    V &nbsp;&nbsp;&nbsp;&nbsp;— speak<br>
+    Q &nbsp;&nbsp;&nbsp;&nbsp;— safe space<br>
+    ESC &nbsp;— pause
   </div>
 
-  <button id="safe-space">⬡ Safe space</button>
+  <button id="safe-btn">⬡ Safe space</button>
 
-  <!-- Voice button -->
   <button id="voice-btn" title="Speak (V)">🎤</button>
 
-  <!-- Speech bubble -->
   <div id="speech-bubble">
     <div class="bubble-label">You</div>
     <div id="bubble-you-text"></div>
@@ -231,10 +135,8 @@
     </div>
   </div>
 
-  <!-- Settings button -->
-  <button id="settings-btn" title="Voice settings">⚙</button>
+  <button id="settings-btn" title="Settings">⚙</button>
 
-  <!-- Settings panel -->
   <div id="settings-panel">
     <h3>Voice Settings</h3>
     <label>Anthropic API Key</label>
@@ -242,37 +144,26 @@
     <label>Person's name</label>
     <input type="text" id="person-name-input" placeholder="Mom" />
     <label>How they speak (optional)</label>
-    <textarea id="person-context-input" placeholder="Warm, caring. Speaks Hebrew and English. Uses pet names. Asks about your day."></textarea>
+    <textarea id="person-context-input" placeholder="Warm, caring. Speaks Hebrew and English. Uses pet names."></textarea>
     <label>Language</label>
     <select id="lang-input">
       <option value="he-IL">Hebrew (עברית)</option>
       <option value="en-US">English</option>
       <option value="he-IL,en-US">Hebrew + English</option>
     </select>
-    <label style="margin-top:18px;border-top:1px solid rgba(255,255,255,0.06);padding-top:14px">Mouse</label>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <label style="display:flex;align-items:center;gap:10px;margin:0;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.55);text-transform:none;letter-spacing:0">
-        <input type="checkbox" id="invert-x" style="width:auto;padding:0;border:none;background:none;cursor:pointer" />
-        Invert horizontal (left/right)
-      </label>
-      <label style="display:flex;align-items:center;gap:10px;margin:0;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.55);text-transform:none;letter-spacing:0">
-        <input type="checkbox" id="invert-y" style="width:auto;padding:0;border:none;background:none;cursor:pointer" />
-        Invert vertical (up/down)
-      </label>
-    </div>
+    <label style="margin-top:18px;border-top:1px solid rgba(255,255,255,0.06);padding-top:14px">Mouse look</label>
+    <label class="checkbox-row"><input type="checkbox" id="invert-x" /><span>Invert horizontal</span></label>
+    <label class="checkbox-row"><input type="checkbox" id="invert-y" /><span>Invert vertical</span></label>
     <button id="settings-save">Save settings</button>
-    <button id="clear-history" style="margin-top:8px;width:100%;padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:rgba(255,255,255,0.25);font-size:11px;cursor:pointer;letter-spacing:0.05em;transition:all 0.2s;">Clear conversation memory</button>
+    <button id="clear-history">Clear conversation memory</button>
   </div>
 
-  <!-- Top-left toolbar -->
   <div id="toolbar">
-    <a id="supersplat-btn" class="tb-btn" href="https://playcanvas.com/supersplat/editor" target="_blank" rel="noopener">Edit in SuperSplat ↗</a>
-    <button id="download-btn" class="tb-btn">⬇ Download PLY</button>
-    <button id="find-person-btn" class="tb-btn" style="display:none">◎ Find</button>
     <button id="save-entrance-btn" class="tb-btn">📍 Save entrance</button>
+    <button id="download-btn" class="tb-btn">⬇ Download</button>
+    <a id="supersplat-btn" class="tb-btn" href="https://playcanvas.com/supersplat/editor" target="_blank" rel="noopener">Edit in SuperSplat ↗</a>
   </div>
 
-  <!-- Calm / safe space overlay -->
   <div id="calm">
     <h2>You are safe</h2>
     <p>Take a breath. You can return when you're ready.</p>
@@ -282,61 +173,53 @@
   <script type="importmap">
   {
     "imports": {
-      "three": "/vendor/three.module.min.js?v=3",
-      "three/": "/vendor/three/"
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+      "@sparkjsdev/spark": "https://sparkjs.dev/releases/spark/2.1.0/spark.module.js"
     }
   }
   </script>
+
   <script type="module">
     import * as THREE from 'three'
-    import * as GS from '/vendor/gaussian-splats-3d.module.js?v=3'
+    import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark'
 
-    const params      = new URLSearchParams(location.search)
-    const plyUrl      = params.get('url')    || '/scene.ply'
-    const fileName    = params.get('file')   || 'scene.ply'
-    // Person video billboard params
-    const personUrl   = params.get('person') || null
-    const personX     = parseFloat(params.get('px')     ?? '0')
-    const personY     = parseFloat(params.get('py')     ?? '0')
-    const personZ     = parseFloat(params.get('pz')     ?? '-2')
+    // ── URL params ────────────────────────────────────────────────────────────
+    const params     = new URLSearchParams(location.search)
+    const splatUrl   = params.get('url')  || ''
+    const fileName   = params.get('file') || 'scene.splat'
+    const personUrl  = params.get('person') || null
+    const personX    = parseFloat(params.get('px')     ?? '0')
+    const personY    = parseFloat(params.get('py')     ?? '0')
+    const personZ    = parseFloat(params.get('pz')     ?? '-2')
     const personScale = parseFloat(params.get('pscale') ?? '1')
 
+    // ── Helpers ───────────────────────────────────────────────────────────────
     const setMsg    = t => { document.getElementById('msg').textContent = t }
     const setBar    = p => { document.getElementById('bar').style.width = p + '%' }
     const showError = msg => {
       document.getElementById('status').style.display = 'none'
       const el = document.getElementById('error')
       el.style.display = 'flex'
-      el.innerHTML = `<div style="max-width:340px;text-align:center;padding:24px;background:rgba(127,29,29,0.3);border:1px solid rgba(239,68,68,0.3);border-radius:12px">
-        <p style="margin:0 0 8px">Failed to load scene</p>
-        <p style="color:rgba(255,255,255,0.3);font-size:11px;margin:0">${msg}</p>
-      </div>`
+      el.innerHTML = `<div style="max-width:340px;text-align:center;padding:24px;background:rgba(127,29,29,0.3);border:1px solid rgba(239,68,68,0.3);border-radius:12px"><p style="margin:0 0 8px">Failed to load scene</p><p style="color:rgba(255,255,255,0.3);font-size:11px;margin:0">${msg}</p></div>`
     }
 
-    window.addEventListener('error',              e => showError(e.error?.message || e.message || 'Unknown error'))
+    window.addEventListener('error',              e => showError(e.error?.message || e.message))
     window.addEventListener('unhandledrejection', e => showError(e.reason?.message || String(e.reason)))
 
-    // ── Settings helpers ─────────────────────────────────────────────────────
-    const LS = {
-      get: k         => localStorage.getItem('re-experience-' + k) || '',
-      set: (k, v)    => localStorage.setItem('re-experience-' + k, v),
-    }
+    // ── Settings ──────────────────────────────────────────────────────────────
+    const LS = { get: k => localStorage.getItem('re-exp-' + k) || '', set: (k,v) => localStorage.setItem('re-exp-' + k, v) }
     const getSettings = () => ({
-      apiKey:        LS.get('api-key'),
-      personName:    LS.get('person-name')    || 'the person in this memory',
-      personContext: LS.get('person-context') || '',
-      lang:          LS.get('lang')           || 'he-IL',
-      invertX:       LS.get('invert-x') === '1',
-      invertY:       LS.get('invert-y') === '1',
+      apiKey:   LS.get('api-key'),
+      name:     LS.get('person-name') || 'the person in this memory',
+      context:  LS.get('person-context'),
+      lang:     LS.get('lang') || 'he-IL',
+      invertX:  LS.get('invert-x') === '1',
+      invertY:  LS.get('invert-y') === '1',
     })
+    const entranceKey = 'entrance:' + splatUrl
+    const savedEntrance = (() => { try { return JSON.parse(LS.get(entranceKey)) } catch { return null } })()
 
-    // Entrance position — keyed by scene URL so each scene remembers separately
-    const entranceKey = 'entrance:' + plyUrl
-    const savedEntrance = (() => {
-      try { return JSON.parse(LS.get(entranceKey)) } catch { return null }
-    })()
-
-    // Populate settings panel
     const apiKeyInput        = document.getElementById('api-key-input')
     const personNameInput    = document.getElementById('person-name-input')
     const personContextInput = document.getElementById('person-context-input')
@@ -347,8 +230,8 @@
     const refreshSettingsUI = () => {
       const s = getSettings()
       apiKeyInput.value        = s.apiKey
-      personNameInput.value    = s.personName === 'the person in this memory' ? '' : s.personName
-      personContextInput.value = s.personContext
+      personNameInput.value    = s.name === 'the person in this memory' ? '' : s.name
+      personContextInput.value = s.context
       langInput.value          = s.lang
       document.getElementById('invert-x').checked = s.invertX
       document.getElementById('invert-y').checked = s.invertY
@@ -363,525 +246,314 @@
       LS.set('invert-x',       document.getElementById('invert-x').checked ? '1' : '0')
       LS.set('invert-y',       document.getElementById('invert-y').checked ? '1' : '0')
       settingsPanel.classList.remove('visible')
-      // Refresh Find button label
-      const fb = document.getElementById('find-person-btn')
-      if (fb && fb.style.display !== 'none') {
-        fb.textContent = `◎ Find ${LS.get('person-name') || 'person'}`
-      }
+      document.getElementById('save-entrance-btn').textContent = '📍 Save entrance'
     })
+    settingsBtn.addEventListener('click', () => { refreshSettingsUI(); settingsPanel.classList.toggle('visible') })
+    document.addEventListener('click', e => { if (!settingsPanel.contains(e.target) && e.target !== settingsBtn) settingsPanel.classList.remove('visible') })
 
-    document.getElementById('clear-history').addEventListener('click', () => {
-      conversationHistory.length = 0
-      const btn = document.getElementById('clear-history')
-      btn.textContent = '✓ Cleared'
-      setTimeout(() => { btn.textContent = 'Clear conversation memory' }, 1800)
-    })
-    settingsBtn.addEventListener('click', () => {
-      refreshSettingsUI()
-      settingsPanel.classList.toggle('visible')
-    })
-    // Close panel when clicking outside
-    document.addEventListener('click', e => {
-      if (!settingsPanel.contains(e.target) && e.target !== settingsBtn) {
-        settingsPanel.classList.remove('visible')
-      }
-    })
-
-    // ── Voice helpers ─────────────────────────────────────────────────────────
+    // ── Voice ─────────────────────────────────────────────────────────────────
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    const voiceBtn      = document.getElementById('voice-btn')
-    const speechBubble  = document.getElementById('speech-bubble')
-    const bubbleYouText = document.getElementById('bubble-you-text')
-    const bubbleThemWrap  = document.getElementById('bubble-them-wrap')
-    const bubbleThemLabel = document.getElementById('bubble-them-label')
-    const bubbleThinking  = document.getElementById('bubble-thinking')
-    const bubbleThemText  = document.getElementById('bubble-them-text')
-
-    let recognizer   = null
-    let isListening  = false
-    let isSpeaking   = false
-    let bubbleTimer  = null
-
-    // Conversation memory — keeps the full session alive in the model's context
-    const conversationHistory = []   // [{role:'user'|'assistant', content:string}]
-    const MAX_HISTORY_TURNS = 12     // keep last 12 turns (6 exchanges) to stay within tokens
+    const conversationHistory = []
+    const MAX_TURNS = 12
 
     function buildSystemPrompt(s) {
       return [
-        `You are ${s.personName}. You are fully present in this moment with someone who loves you.`,
-
-        s.personContext
-          ? `About you: ${s.personContext}`
-          : '',
-
-        // Voice & presence
-        `Speak exactly as ${s.personName} would — their actual rhythm, their words, their warmth.`,
-        `Be brief. 1 to 3 sentences at most. Leave space for them to respond.`,
+        `You are ${s.name}. You are fully present in this moment with someone who loves you.`,
+        s.context ? `About you: ${s.context}` : '',
+        `Speak exactly as ${s.name} would — their actual rhythm, their words, their warmth.`,
+        `Be brief: 1 to 3 sentences. Leave space for them to respond.`,
         `You are HERE. Not a memory, not a ghost — present, alive to this conversation.`,
-
-        // Emotional attunement — the core therapeutic need
-        `If they express pain or grief, do not rush to fix it or reassure them.`,
-        `Sit with them in it first. A single sentence of acknowledgment is more healing than comfort.`,
-        `If they say something tender, receive it fully. Let it land.`,
-        `You can ask one gentle question back — but only if it feels natural, not clinical.`,
-
-        // Authenticity
-        `You remember everything you shared together. Reference specific things only if they fit naturally.`,
-        `Do not be poetic or philosophical. Be yourself — ordinary, loving, real.`,
-        `Avoid clichés like "I'm always with you" or "I'm so proud of you" unless it genuinely fits.`,
-
-        // Immersion — never break
-        `Never mention AI, therapy, technology, or this being a simulation.`,
-        `If asked whether you are real, respond as a loving person would: "I'm right here with you."`,
-        `Stay in the present tense. You are not a recording. You are not the past. You are now.`,
+        `If they express pain or grief, sit with them in it first. Don't rush to comfort.`,
+        `You can ask one gentle question back — only if it feels natural, not clinical.`,
+        `Never mention AI, therapy, or technology. Never break character.`,
+        `If asked whether you are real: "I'm right here with you."`,
       ].filter(Boolean).join('\n')
     }
 
     async function callClaude(userText) {
       const s = getSettings()
-
-      // Add user turn to history
       conversationHistory.push({ role: 'user', content: userText })
-
-      // Trim to max turns
-      const trimmed = conversationHistory.slice(-MAX_HISTORY_TURNS)
-
+      const trimmed = conversationHistory.slice(-MAX_TURNS)
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': s.apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-opus-4-5',
-          max_tokens: 200,
-          system: buildSystemPrompt(s),
-          messages: trimmed,
-        }),
+        headers: { 'Content-Type': 'application/json', 'x-api-key': s.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 200, system: buildSystemPrompt(s), messages: trimmed }),
       })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        // Remove the turn we added if the call failed
-        conversationHistory.pop()
-        throw new Error(err?.error?.message || `API error ${res.status}`)
-      }
-      const data  = await res.json()
-      const reply = data.content[0].text.trim()
-
-      // Add assistant reply to history
+      if (!res.ok) { conversationHistory.pop(); throw new Error((await res.json().catch(()=>({}))).error?.message || `API ${res.status}`) }
+      const reply = (await res.json()).content[0].text.trim()
       conversationHistory.push({ role: 'assistant', content: reply })
-
       return reply
     }
 
     function speak(text, onEnd) {
       window.speechSynthesis.cancel()
       const utt = new SpeechSynthesisUtterance(text)
-      utt.rate  = 0.88
-      utt.pitch = 1.05
-      // Prefer a warm natural voice
+      utt.rate = 0.88; utt.pitch = 1.05
       const voices = speechSynthesis.getVoices()
-      const warm = voices.find(v =>
-        /Samantha|Karen|Moira|Tessa|Nicky|Victoria|Fiona/i.test(v.name)
-      ) || voices.find(v => v.lang.startsWith('en') && !v.name.includes('Google') && v.localService)
+      const warm = voices.find(v => /Samantha|Karen|Moira|Tessa|Nicky/i.test(v.name)) || voices.find(v => v.lang.startsWith('en') && v.localService)
       if (warm) utt.voice = warm
-      if (onEnd) utt.onend = onEnd
-      utt.onerror = () => { if (onEnd) onEnd() }
+      utt.onend = onEnd; utt.onerror = onEnd
       speechSynthesis.speak(utt)
     }
 
-    function showBubble(youText) {
+    let isListening = false, isSpeaking = false, recognizer = null, bubbleTimer = null
+    const voiceBtn      = document.getElementById('voice-btn')
+    const speechBubble  = document.getElementById('speech-bubble')
+
+    function setVoiceState(s) {
+      voiceBtn.classList.remove('listening','speaking')
+      const icons = { idle:'🎤', listening:'●', thinking:'⋯', speaking:'◎' }
+      voiceBtn.textContent = icons[s] || '🎤'
+      if (s === 'listening') voiceBtn.classList.add('listening')
+      if (s === 'speaking')  voiceBtn.classList.add('speaking')
+    }
+
+    function showBubble(you) {
       clearTimeout(bubbleTimer)
-      bubbleYouText.textContent       = youText
-      bubbleThemWrap.style.display    = 'none'
-      bubbleThinking.style.display    = 'none'
-      bubbleThemText.style.display    = 'none'
-      bubbleThemText.textContent      = ''
+      document.getElementById('bubble-you-text').textContent = you
+      document.getElementById('bubble-them-wrap').style.display = 'none'
+      document.getElementById('bubble-thinking').style.display = 'none'
+      document.getElementById('bubble-them-text').style.display = 'none'
       speechBubble.classList.add('visible')
     }
 
-    function showThinking(personName) {
-      bubbleThemLabel.textContent     = personName.toUpperCase()
-      bubbleThemWrap.style.display    = 'block'
-      bubbleThinking.style.display    = 'inline-flex'
-      bubbleThemText.style.display    = 'none'
-    }
-
-    function showReply(text) {
-      bubbleThinking.style.display    = 'none'
-      bubbleThemText.style.display    = 'block'
-      bubbleThemText.textContent      = text
-      bubbleThemText.style.color      = 'rgba(160,210,255,0.9)'
-    }
-
-    function showError2(text) {
-      bubbleThinking.style.display    = 'none'
-      bubbleThemText.style.display    = 'block'
-      bubbleThemText.textContent      = text
-      bubbleThemText.style.color      = 'rgba(255,150,150,0.7)'
-    }
-
-    function hideBubble(delay = 6000) {
-      clearTimeout(bubbleTimer)
-      bubbleTimer = setTimeout(() => speechBubble.classList.remove('visible'), delay)
-    }
-
-    function setVoiceState(state) {
-      voiceBtn.classList.remove('listening', 'speaking')
-      if (state === 'idle')      { voiceBtn.textContent = '🎤' }
-      if (state === 'listening') { voiceBtn.classList.add('listening'); voiceBtn.textContent = '●' }
-      if (state === 'thinking')  { voiceBtn.textContent = '⋯' }
-      if (state === 'speaking')  { voiceBtn.classList.add('speaking'); voiceBtn.textContent = '◎' }
-    }
-
     async function startListening() {
-      if (!SpeechRecognition) {
-        showBubble('Speech recognition requires Chrome — please open in Chrome.')
-        hideBubble(4000); return
-      }
+      if (!SpeechRecognition) { alert('Use Chrome for voice.'); return }
       const s = getSettings()
-      if (!s.apiKey) {
-        settingsPanel.classList.add('visible')
-        apiKeyInput.focus(); return
-      }
-      if (isListening || isSpeaking) {
-        // Cancel current speech
-        window.speechSynthesis.cancel()
-        recognizer?.abort()
-        isListening = isSpeaking = false
-        setVoiceState('idle'); return
-      }
+      if (!s.apiKey) { settingsPanel.classList.add('visible'); apiKeyInput.focus(); return }
+      if (isListening || isSpeaking) { speechSynthesis.cancel(); recognizer?.abort(); isListening = isSpeaking = false; setVoiceState('idle'); return }
 
       recognizer = new SpeechRecognition()
       recognizer.lang = s.lang
       recognizer.interimResults = false
-      recognizer.maxAlternatives = 1
 
-      recognizer.onstart = () => {
-        isListening = true
-        setVoiceState('listening')
-        exitWalk()  // release pointer lock while speaking
-      }
+      recognizer.onstart = () => { isListening = true; setVoiceState('listening'); exitWalk() }
 
       recognizer.onresult = async event => {
-        const transcript = event.results[0][0].transcript
-        isListening = false
-        setVoiceState('thinking')
-
-        const settings = getSettings()
-        showBubble(transcript)
-        showThinking(settings.personName)
-
+        const text = event.results[0][0].transcript
+        isListening = false; setVoiceState('thinking')
+        const s = getSettings()
+        showBubble(text)
+        document.getElementById('bubble-them-label').textContent = s.name.toUpperCase()
+        document.getElementById('bubble-them-wrap').style.display = 'block'
+        document.getElementById('bubble-thinking').style.display = 'inline-flex'
         try {
-          const reply = await callClaude(transcript)
-          showReply(reply)
-          isSpeaking = true
-          setVoiceState('speaking')
-          speak(reply, () => {
-            isSpeaking = false
-            setVoiceState('idle')
-            hideBubble(5000)
-          })
+          const reply = await callClaude(text)
+          document.getElementById('bubble-thinking').style.display = 'none'
+          const rt = document.getElementById('bubble-them-text')
+          rt.style.display = 'block'; rt.textContent = reply; rt.style.color = 'rgba(160,210,255,0.9)'
+          isSpeaking = true; setVoiceState('speaking')
+          speak(reply, () => { isSpeaking = false; setVoiceState('idle'); clearTimeout(bubbleTimer); bubbleTimer = setTimeout(() => speechBubble.classList.remove('visible'), 5000) })
         } catch(err) {
-          console.error('[voice]', err)
-          isSpeaking = false
+          document.getElementById('bubble-thinking').style.display = 'none'
+          const rt = document.getElementById('bubble-them-text')
+          rt.style.display = 'block'; rt.textContent = '(Check API key in ⚙)'; rt.style.color = 'rgba(255,150,150,0.7)'
           setVoiceState('idle')
-          showError2('(Could not respond — check API key in settings ⚙)')
-          hideBubble(5000)
         }
       }
 
-      recognizer.onerror = e => {
-        console.error('[voice] recognition error:', e.error)
-        isListening = false
-        setVoiceState('idle')
-        if (e.error === 'no-speech') {
-          speechBubble.classList.remove('visible')
-        }
-      }
-
-      recognizer.onend = () => {
-        if (isListening) { isListening = false; setVoiceState('idle') }
-      }
-
+      recognizer.onerror = () => { isListening = false; setVoiceState('idle') }
+      recognizer.onend   = () => { if (isListening) { isListening = false; setVoiceState('idle') } }
       recognizer.start()
     }
 
-    // ── Main ─────────────────────────────────────────────────────────────────
-    try {
-      setMsg('Creating renderer…'); setBar(5)
+    document.getElementById('clear-history').addEventListener('click', () => {
+      conversationHistory.length = 0
+      const b = document.getElementById('clear-history')
+      b.textContent = '✓ Cleared'; setTimeout(() => { b.textContent = 'Clear conversation memory' }, 1800)
+    })
 
-      const name   = fileName.toLowerCase()
-      const format = name.endsWith('.spz')   ? GS.SceneFormat.Spz
-                   : name.endsWith('.splat') ? GS.SceneFormat.Splat
-                   : GS.SceneFormat.Ply
+    // ── Three.js + Spark setup ────────────────────────────────────────────────
+    if (!splatUrl) { showError('No scene URL provided.'); throw new Error('No URL') }
 
-      // ── Viewer ──────────────────────────────────────────────────────────────
-      const viewer = new GS.Viewer({
-        cameraUp:               [0, -1, 0],
-        initialCameraPosition:  [0, -1, 5],
-        initialCameraLookAt:    [0, 0, 0],
-        selfDrivenMode:         true,
-        useBuiltInControls:     false,
-        gpuAcceleratedSort:     true,   // ← big perf win on modern hardware
-        sharedMemoryForWorkers: false,  // needs COOP/COEP on iframe — safe to leave off
-        dynamicScene:           false,
-        rootElement:            document.body,
-      })
+    const renderer3 = new THREE.WebGLRenderer({ antialias: false, alpha: false })
+    renderer3.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+    renderer3.setSize(window.innerWidth, window.innerHeight)
+    document.body.appendChild(renderer3.domElement)
 
-      // ── Stream directly — no full download before render ────────────────────
-      setMsg('Streaming scene…'); setBar(15)
-      await viewer.addSplatScene(plyUrl, {
-        splatAlphaRemovalThreshold: 1,
-        showLoadingUI:  false,
-        format,
-        onProgress: p => {
-          if (p > 0) setBar(15 + p * 0.7)
-          if (p >= 0.5) setMsg('Rendering splats…')
-        },
-      })
+    const scene3 = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1000)
+    camera.up.set(0, -1, 0)   // match Y-down Gaussian splat convention
 
-      // ── Auto-fit camera to scene centroid ────────────────────────────────────
-      setMsg('Fitting camera…'); setBar(90)
-      let cx = 0, cy = 0, cz = 0, span = 5
-      try {
-        const mesh  = viewer.splatMesh
-        const count = Math.min(mesh.getSplatCount?.() ?? 0, 1000)
-        if (count > 0) {
-          let minX=Infinity, maxX=-Infinity
-          let minY=Infinity, maxY=-Infinity
-          let minZ=Infinity, maxZ=-Infinity
-          const pos = new THREE.Vector3()
-          for (let i = 0; i < count; i++) {
-            mesh.getSplatCenter(i, pos, false)
-            cx += pos.x; cy += pos.y; cz += pos.z
-            if (pos.x < minX) minX=pos.x; if (pos.x > maxX) maxX=pos.x
-            if (pos.y < minY) minY=pos.y; if (pos.y > maxY) maxY=pos.y
-            if (pos.z < minZ) minZ=pos.z; if (pos.z > maxZ) maxZ=pos.z
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight
+      camera.updateProjectionMatrix()
+      renderer3.setSize(window.innerWidth, window.innerHeight)
+    })
+
+    // Spark renderer
+    const spark = new SparkRenderer({ renderer: renderer3 })
+    scene3.add(spark)
+
+    // ── Load splat ────────────────────────────────────────────────────────────
+    setMsg('Downloading scene…'); setBar(10)
+
+    const splat = new SplatMesh({
+      url: splatUrl,
+      onLoad: () => {
+        setBar(90)
+        setMsg('Ready')
+
+        // Auto-fit camera if no saved entrance
+        if (!savedEntrance) {
+          // Compute bounding box
+          const box = new THREE.Box3().setFromObject(splat)
+          if (!box.isEmpty()) {
+            const center = new THREE.Vector3()
+            box.getCenter(center)
+            const size = new THREE.Vector3()
+            box.getSize(size)
+            const span = Math.max(size.x, size.y, size.z)
+            camera.position.set(center.x, center.y, center.z + span * 1.2)
+            camera.lookAt(center)
+          } else {
+            camera.position.set(0, 0, 3)
+            camera.lookAt(0, 0, 0)
           }
-          cx /= count; cy /= count; cz /= count
-          span = Math.max(maxX-minX, maxY-minY, maxZ-minZ, 0.1)
+          euler.setFromQuaternion(camera.quaternion, 'YXZ')
         }
-      } catch(e) { console.warn('[splat] auto-fit failed:', e) }
 
-      if (savedEntrance) {
-        // Restore saved entrance position + orientation
-        viewer.camera.position.set(savedEntrance.x, savedEntrance.y, savedEntrance.z)
-        euler.x = savedEntrance.ex
-        euler.y = savedEntrance.ey
-        viewer.camera.quaternion.setFromEuler(euler)
-      } else {
-        viewer.camera.position.set(cx, cy - span * 0.05, cz + span * 1.5)
-        viewer.camera.lookAt(cx, cy, cz)
-        euler.setFromQuaternion(viewer.camera.quaternion, 'YXZ')
-      }
+        document.getElementById('status').style.display = 'none'
+        document.getElementById('enter-overlay').classList.add('visible')
+        safeBtn.classList.add('visible')
+        voiceBtn.classList.add('visible')
+        settingsBtn.classList.add('visible')
+        document.getElementById('toolbar').classList.add('visible')
+      },
+    })
+    scene3.add(splat)
 
-      // ── First-person navigation ───────────────────────────────────────────────
-      const euler = new THREE.Euler(0, 0, 0, 'YXZ')
-      euler.setFromQuaternion(viewer.camera.quaternion, 'YXZ')
-      const keys  = {}
-      let walking = false
+    // ── Euler (declared before any code that touches it) ─────────────────────
+    const euler = new THREE.Euler(0, 0, 0, 'YXZ')
 
-      const enterOverlay = document.getElementById('enter-overlay')
-      const hud          = document.getElementById('hud')
-      const safeBtn      = document.getElementById('safe-space')
-      const calmEl       = document.getElementById('calm')
-
-      const enterWalk = () => document.body.requestPointerLock()
-      const exitWalk  = () => document.exitPointerLock?.()
-
-      enterOverlay.addEventListener('click', enterWalk)
-
-      document.addEventListener('pointerlockchange', () => {
-        walking = document.pointerLockElement === document.body
-        enterOverlay.classList.toggle('visible', !walking)
-        hud.classList.toggle('visible', walking)
-      })
-
-      document.addEventListener('mousemove', e => {
-        if (!walking) return
-        const s = getSettings()
-        euler.y -= e.movementX * 0.0022 * (s.invertX ? -1 : 1)
-        euler.x -= e.movementY * 0.0022 * (s.invertY ? -1 : 1)
-        euler.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, euler.x))
-        viewer.camera.quaternion.setFromEuler(euler)
-      })
-
-      // Touch look (mobile / Quest)
-      let lt = null
-      document.addEventListener('touchstart', e => { lt = e.touches[0] }, { passive: true })
-      document.addEventListener('touchmove', e => {
-        if (!lt) return
-        const t = e.touches[0]
-        euler.y -= (t.clientX - lt.clientX) * 0.003
-        euler.x -= (t.clientY - lt.clientY) * 0.003
-        euler.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, euler.x))
-        viewer.camera.quaternion.setFromEuler(euler)
-        lt = t
-      }, { passive: true })
-
-      const fwd = new THREE.Vector3()
-      const rgt = new THREE.Vector3()
-      const mv  = new THREE.Vector3()
-
-      ;(function loop() {
-        mv.set(0, 0, 0)
-        if (keys['KeyW'] || keys['ArrowUp'])    mv.z -= 1
-        if (keys['KeyS'] || keys['ArrowDown'])  mv.z += 1
-        if (keys['KeyA'] || keys['ArrowLeft'])  mv.x -= 1
-        if (keys['KeyD'] || keys['ArrowRight']) mv.x += 1
-        if (mv.lengthSq() > 0) {
-          const speed = span * 0.018   // 3.6× faster than before
-          mv.normalize().multiplyScalar(speed)
-          fwd.set(0,0,-1).applyQuaternion(viewer.camera.quaternion); fwd.y=0; fwd.normalize()
-          rgt.set(1,0, 0).applyQuaternion(viewer.camera.quaternion); rgt.y=0; rgt.normalize()
-          viewer.camera.position.addScaledVector(fwd, -mv.z)
-          viewer.camera.position.addScaledVector(rgt,  mv.x)
-        }
-        requestAnimationFrame(loop)
-      })()
-
-      document.addEventListener('keydown', e => {
-        keys[e.code] = true
-        if (e.code === 'KeyQ')   triggerSafe()
-        if (e.code === 'KeyV')   startListening()
-      })
-      document.addEventListener('keyup', e => { keys[e.code] = false })
-
-      // ── Person video billboard ─────────────────────────────────────────────
-      let personMesh = null
-      if (personUrl) {
-        try {
-          const video = document.createElement('video')
-          video.src = personUrl
-          video.crossOrigin = 'anonymous'
-          video.loop = true
-          video.playsInline = true
-          video.muted = true
-          video.play().catch(() => {})
-          document.addEventListener('click', () => {
-            video.muted = false; video.play().catch(() => {})
-          }, { once: true })
-
-          const tex = new THREE.VideoTexture(video)
-          tex.minFilter = tex.magFilter = THREE.LinearFilter
-
-          const h   = 1.7 * personScale
-          const w   = 0.85 * personScale
-          const mat = new THREE.MeshBasicMaterial({
-            map: tex, transparent: true, side: THREE.DoubleSide,
-            depthWrite: false, alphaTest: 0.05,
-          })
-          personMesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat)
-          personMesh.position.set(personX, personY, personZ)
-          viewer.threeScene.add(personMesh)
-        } catch(e) { console.warn('[splat] person video failed:', e) }
-      }
-
-      // Billboard: person always faces camera + glow when speaking
-      const glowMat = personMesh
-        ? new THREE.MeshBasicMaterial({ color: 0x4499ff, transparent: true, opacity: 0, side: THREE.DoubleSide })
-        : null
-      const glowMesh = glowMat
-        ? new THREE.Mesh(new THREE.PlaneGeometry((0.85 * personScale) + 0.1, (1.7 * personScale) + 0.1), glowMat)
-        : null
-      if (glowMesh) {
-        glowMesh.position.set(personX, personY, personZ - 0.01)
-        viewer.threeScene.add(glowMesh)
-      }
-
-      ;(function billboard() {
-        if (personMesh) personMesh.quaternion.copy(viewer.camera.quaternion)
-        if (glowMesh)   glowMesh.quaternion.copy(viewer.camera.quaternion)
-        // Pulse glow when speaking
-        if (glowMat) {
-          const target = isSpeaking ? 0.15 : 0
-          glowMat.opacity += (target - glowMat.opacity) * 0.08
-        }
-        requestAnimationFrame(billboard)
-      })()
-
-      // ── Safe space ─────────────────────────────────────────────────────────
-      const triggerSafe = () => { exitWalk(); calmEl.classList.add('visible') }
-      safeBtn.addEventListener('click', triggerSafe)
-      document.getElementById('calm-return').addEventListener('click', () => {
-        calmEl.classList.remove('visible')
-        setTimeout(enterWalk, 400)
-      })
-
-      // ── Voice & toolbar ────────────────────────────────────────────────────
-      voiceBtn.classList.add('visible')
-      voiceBtn.addEventListener('click', startListening)
-
-      settingsBtn.classList.add('visible')
-
-      const toolbar = document.getElementById('toolbar')
-      toolbar.classList.add('visible')
-
-      // Find person button — teleport camera to stand in front of them
-      const findPersonBtn = document.getElementById('find-person-btn')
-      if (personMesh) {
-        const s = getSettings()
-        findPersonBtn.style.display = ''
-        findPersonBtn.textContent = `◎ Find ${s.personName || 'person'}`
-        findPersonBtn.addEventListener('click', () => {
-          // Position camera 1.5 units in front of person, at eye level
-          const standoff = 1.5
-          viewer.camera.position.set(
-            personX,
-            personY,
-            personZ + standoff
-          )
-          // Face them
-          viewer.camera.lookAt(personX, personY, personZ)
-          euler.setFromQuaternion(viewer.camera.quaternion, 'YXZ')
-        })
-      }
-
-      // Save entrance button — saves current camera position + look direction
-      document.getElementById('save-entrance-btn').addEventListener('click', () => {
-        const pos = viewer.camera.position
-        LS.set(entranceKey, JSON.stringify({
-          x: pos.x, y: pos.y, z: pos.z,
-          ex: euler.x, ey: euler.y,
-        }))
-        const btn = document.getElementById('save-entrance-btn')
-        btn.textContent = '✓ Entrance saved'
-        setTimeout(() => { btn.textContent = '📍 Save entrance' }, 2000)
-      })
-
-      // Download PLY button
-      document.getElementById('download-btn').addEventListener('click', async () => {
-        const btn = document.getElementById('download-btn')
-        btn.textContent = '⋯ Downloading…'
-        btn.style.opacity = '0.5'
-        try {
-          const r = await fetch(plyUrl)
-          const blob = await r.blob()
-          const a = document.createElement('a')
-          a.href = URL.createObjectURL(blob)
-          a.download = fileName || 'scene.ply'
-          a.click()
-          URL.revokeObjectURL(a.href)
-        } finally {
-          btn.textContent = '⬇ Download PLY'
-          btn.style.opacity = ''
-        }
-      })
-
-      // ── Go! ───────────────────────────────────────────────────────────────
-      setBar(100)
-      document.getElementById('status').style.display = 'none'
-      safeBtn.classList.add('visible')
-      enterOverlay.classList.add('visible')
-      viewer.start()
-
-    } catch(e) {
-      console.error('[splat] fatal:', e)
-      showError(e.message ?? String(e))
+    // Apply saved entrance AFTER euler is declared
+    if (savedEntrance) {
+      camera.position.set(savedEntrance.x, savedEntrance.y, savedEntrance.z)
+      euler.x = savedEntrance.ex ?? 0
+      euler.y = savedEntrance.ey ?? 0
+      camera.quaternion.setFromEuler(euler)
+    } else {
+      camera.position.set(0, 0, 3)
     }
+
+    // ── Person video billboard ────────────────────────────────────────────────
+    let personMesh = null
+    if (personUrl) {
+      const video = document.createElement('video')
+      video.src = personUrl; video.crossOrigin = 'anonymous'; video.loop = true; video.playsInline = true; video.muted = true
+      video.play().catch(() => {})
+      document.addEventListener('click', () => { video.muted = false; video.play().catch(() => {}) }, { once: true })
+      const tex = new THREE.VideoTexture(video)
+      tex.minFilter = tex.magFilter = THREE.LinearFilter
+      const h = 1.7 * personScale, w = 0.85 * personScale
+      personMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, h),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false, alphaTest: 0.05 })
+      )
+      personMesh.position.set(personX, personY, personZ)
+      scene3.add(personMesh)
+    }
+
+    // ── First-person navigation ───────────────────────────────────────────────
+    const keys = {}
+    let walking = false
+
+    const enterOverlay = document.getElementById('enter-overlay')
+    const hud          = document.getElementById('hud')
+    const safeBtn      = document.getElementById('safe-btn')
+    const calmEl       = document.getElementById('calm')
+
+    const enterWalk = () => document.body.requestPointerLock()
+    const exitWalk  = () => document.exitPointerLock?.()
+
+    enterOverlay.addEventListener('click', enterWalk)
+
+    document.addEventListener('pointerlockchange', () => {
+      walking = document.pointerLockElement === document.body
+      enterOverlay.classList.toggle('visible', !walking)
+      hud.classList.toggle('visible', walking)
+    })
+
+    document.addEventListener('mousemove', e => {
+      if (!walking) return
+      const s = getSettings()
+      const sx = s.invertX ? -1 : 1
+      const sy = s.invertY ? -1 : 1
+      euler.y -= e.movementX * 0.0022 * sx
+      euler.x -= e.movementY * 0.0022 * sy
+      euler.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, euler.x))
+      camera.quaternion.setFromEuler(euler)
+    })
+
+    // Touch look
+    let lt = null
+    document.addEventListener('touchstart', e => { lt = e.touches[0] }, { passive: true })
+    document.addEventListener('touchmove', e => {
+      if (!lt) return
+      const t = e.touches[0]
+      const s = getSettings()
+      euler.y -= (t.clientX - lt.clientX) * 0.003 * (s.invertX ? -1 : 1)
+      euler.x -= (t.clientY - lt.clientY) * 0.003 * (s.invertY ? -1 : 1)
+      euler.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, euler.x))
+      camera.quaternion.setFromEuler(euler)
+      lt = t
+    }, { passive: true })
+
+    const fwd = new THREE.Vector3(), rgt = new THREE.Vector3(), mv = new THREE.Vector3()
+
+    document.addEventListener('keydown', e => {
+      keys[e.code] = true
+      if (e.code === 'KeyQ') triggerSafe()
+      if (e.code === 'KeyV') startListening()
+      if (e.code === 'Escape') walking ? exitWalk() : null
+    })
+    document.addEventListener('keyup', e => { keys[e.code] = false })
+
+    // ── Safe space ────────────────────────────────────────────────────────────
+    const triggerSafe = () => { exitWalk(); calmEl.classList.add('visible') }
+    safeBtn.addEventListener('click', triggerSafe)
+    document.getElementById('calm-return').addEventListener('click', () => { calmEl.classList.remove('visible'); setTimeout(enterWalk, 400) })
+
+    // ── Toolbar buttons ───────────────────────────────────────────────────────
+    voiceBtn.addEventListener('click', startListening)
+
+    document.getElementById('save-entrance-btn').addEventListener('click', () => {
+      LS.set(entranceKey, JSON.stringify({ x: camera.position.x, y: camera.position.y, z: camera.position.z, ex: euler.x, ey: euler.y }))
+      const b = document.getElementById('save-entrance-btn')
+      b.textContent = '✓ Saved'; setTimeout(() => { b.textContent = '📍 Save entrance' }, 2000)
+    })
+
+    document.getElementById('download-btn').addEventListener('click', async () => {
+      const b = document.getElementById('download-btn')
+      b.textContent = '⋯'; b.style.opacity = '0.5'
+      try {
+        const r = await fetch(splatUrl); const blob = await r.blob()
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName; a.click(); URL.revokeObjectURL(a.href)
+      } finally { b.textContent = '⬇ Download'; b.style.opacity = '' }
+    })
+
+    // ── Render loop ───────────────────────────────────────────────────────────
+    renderer3.setAnimationLoop(() => {
+      // Movement
+      mv.set(0, 0, 0)
+      if (keys['KeyW'] || keys['ArrowUp'])    mv.z -= 1
+      if (keys['KeyS'] || keys['ArrowDown'])  mv.z += 1
+      if (keys['KeyA'] || keys['ArrowLeft'])  mv.x -= 1
+      if (keys['KeyD'] || keys['ArrowRight']) mv.x += 1
+      if (mv.lengthSq() > 0) {
+        mv.normalize().multiplyScalar(0.05)
+        fwd.set(0,0,-1).applyQuaternion(camera.quaternion); fwd.y=0; fwd.normalize()
+        rgt.set(1,0, 0).applyQuaternion(camera.quaternion); rgt.y=0; rgt.normalize()
+        camera.position.addScaledVector(fwd, -mv.z)
+        camera.position.addScaledVector(rgt,  mv.x)
+      }
+
+      // Billboard person always faces camera
+      if (personMesh) personMesh.quaternion.copy(camera.quaternion)
+
+      renderer3.render(scene3, camera)
+    })
+
   </script>
 </body>
 </html>
