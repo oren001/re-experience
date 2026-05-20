@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
 
 # Python deps
 COPY requirements.txt /workspace/requirements.txt
-RUN pip install --no-cache-dir -r /workspace/requirements.txt
+RUN python3 -m pip install --no-cache-dir -r /workspace/requirements.txt
 
 # Worker code
 COPY handler.py /workspace/handler.py
@@ -16,4 +16,4 @@ COPY handler.py /workspace/handler.py
 WORKDIR /workspace
 
 # RunPod entrypoint
-CMD ["python", "-u", "handler.py"]
+CMD ["python3", "-u", "handler.py"]
