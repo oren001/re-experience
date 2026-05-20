@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+
 interface Props {
   source: string
   fileName?: string
@@ -5,8 +7,20 @@ interface Props {
 }
 
 export function SplatViewer({ source, fileName = '', onBack }: Props) {
-  // Build the URL for the standalone splat.html viewer
   const viewerUrl = `/splat.html?url=${encodeURIComponent(source)}&file=${encodeURIComponent(fileName)}`
+
+  // Listen for thumbnail postMessages from the iframe and persist them
+  // so SceneLibrary can show real scene previews on the cards.
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type !== 're-exp-thumbnail') return
+      const { url, thumb } = e.data as { url: string; thumb: string }
+      if (!url || !thumb) return
+      try { localStorage.setItem(`re-exp-thumb:${url}`, thumb) } catch { /* quota full */ }
+    }
+    window.addEventListener('message', handler)
+    return () => window.removeEventListener('message', handler)
+  }, [])
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col" style={{ background: '#080810' }}>

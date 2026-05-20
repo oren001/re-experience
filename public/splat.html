@@ -376,7 +376,7 @@
     // ── Three.js + Spark setup ────────────────────────────────────────────────
     if (!splatUrl) { showError('No scene URL provided.'); throw new Error('No URL') }
 
-    const renderer3 = new THREE.WebGLRenderer({ antialias: false, alpha: false })
+    const renderer3 = new THREE.WebGLRenderer({ antialias: false, alpha: false, preserveDrawingBuffer: true })
     renderer3.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     renderer3.setSize(window.innerWidth, window.innerHeight)
     document.body.appendChild(renderer3.domElement)
@@ -433,6 +433,16 @@
         voiceBtn.classList.add('visible')
         settingsBtn.classList.add('visible')
         document.getElementById('toolbar').classList.add('visible')
+
+        // Auto-capture a thumbnail and send to parent library so the card
+        // shows a real scene preview next time.  Delay 2.5 s so the splat
+        // has time to sort and render a clean first frame.
+        setTimeout(() => {
+          try {
+            const thumb = renderer3.domElement.toDataURL('image/jpeg', 0.72)
+            window.parent?.postMessage({ type: 're-exp-thumbnail', url: splatUrl, thumb }, '*')
+          } catch (_) { /* cross-origin canvas taint — silently skip */ }
+        }, 2500)
       },
     })
     splat.scale.y = -1   // flip Y-down splat data into Y-up camera space

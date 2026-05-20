@@ -85,6 +85,9 @@ function PortalCard({
   const isSeed = scene.id.startsWith('seed-') || scene.id.startsWith('sample-')
   const t   = THEMES[index % THEMES.length]
   const fmt = scene.fileName.endsWith('.spz') ? 'SPZ' : scene.fileName.endsWith('.splat') ? 'SPLAT' : 'PLY'
+  // Thumbnail captured the last time this scene was visited
+  const thumbKey = `re-exp-thumb:${scene.url ?? scene.id}`
+  const thumbnail = (() => { try { return localStorage.getItem(thumbKey) } catch { return null } })()
 
   const handleOpen = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -124,36 +127,60 @@ function PortalCard({
         animation: `fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) ${index * 0.07}s both`,
       }}
     >
-      {/* ── Atmospheric background ──────────────────────── */}
-      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-        <div className="card-orb1" style={{
-          position: 'absolute', width: '75%', height: '75%',
-          top: '-20%', right: '-15%',
-          background: `radial-gradient(circle, ${t.orb1} 0%, transparent 70%)`,
-          borderRadius: '50%', opacity: 0.55,
-          animation: 'orb1 9s ease-in-out infinite',
-        }} />
-        <div className="card-orb2" style={{
-          position: 'absolute', width: '60%', height: '60%',
-          bottom: '-15%', left: '-10%',
-          background: `radial-gradient(circle, ${t.orb2} 0%, transparent 70%)`,
-          borderRadius: '50%', opacity: 0.45,
-          animation: 'orb2 12s ease-in-out infinite',
-        }} />
-        <div className="card-orb3" style={{
-          position: 'absolute', width: '45%', height: '45%',
-          top: '35%', left: '25%',
-          background: `radial-gradient(circle, ${t.orb3} 0%, transparent 70%)`,
-          borderRadius: '50%', opacity: 0.3,
-          animation: 'orb3 7s ease-in-out infinite',
-        }} />
-        {/* Top shimmer edge */}
-        <div className="card-shimmer" style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: '1px',
-          background: `linear-gradient(90deg, transparent, ${t.shimmer}, transparent)`,
-          opacity: 0.25,
-        }} />
-      </div>
+      {/* ── Background: real thumbnail if we have one, otherwise orbs ─ */}
+      {thumbnail ? (
+        // Real scene screenshot captured on last visit
+        <div style={{
+          position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none',
+        }}>
+          <img
+            src={thumbnail}
+            alt=""
+            style={{
+              width: '100%', height: '100%',
+              objectFit: 'cover', objectPosition: 'center',
+              opacity: 0.75,
+              transition: 'opacity 0.5s',
+            }}
+          />
+          {/* Subtle color tint so the theme colour still peeks through */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: `radial-gradient(circle at 70% 20%, ${t.orb1} 0%, transparent 65%)`,
+            mixBlendMode: 'soft-light', opacity: 0.6,
+          }} />
+        </div>
+      ) : (
+        // Atmospheric placeholder orbs before first visit
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+          <div className="card-orb1" style={{
+            position: 'absolute', width: '75%', height: '75%',
+            top: '-20%', right: '-15%',
+            background: `radial-gradient(circle, ${t.orb1} 0%, transparent 70%)`,
+            borderRadius: '50%', opacity: 0.55,
+            animation: 'orb1 9s ease-in-out infinite',
+          }} />
+          <div className="card-orb2" style={{
+            position: 'absolute', width: '60%', height: '60%',
+            bottom: '-15%', left: '-10%',
+            background: `radial-gradient(circle, ${t.orb2} 0%, transparent 70%)`,
+            borderRadius: '50%', opacity: 0.45,
+            animation: 'orb2 12s ease-in-out infinite',
+          }} />
+          <div className="card-orb3" style={{
+            position: 'absolute', width: '45%', height: '45%',
+            top: '35%', left: '25%',
+            background: `radial-gradient(circle, ${t.orb3} 0%, transparent 70%)`,
+            borderRadius: '50%', opacity: 0.3,
+            animation: 'orb3 7s ease-in-out infinite',
+          }} />
+          <div className="card-shimmer" style={{
+            position: 'absolute', top: 0, left: 0, right: 0, height: '1px',
+            background: `linear-gradient(90deg, transparent, ${t.shimmer}, transparent)`,
+            opacity: 0.25,
+          }} />
+        </div>
+      )}
 
       {/* ── Bottom vignette so text is always readable ──── */}
       <div style={{
@@ -255,6 +282,28 @@ function PortalCard({
   )
 }
 
+function SectionLabel({ title, hint, style }: { title: string; hint?: string; style?: React.CSSProperties }) {
+  return (
+    <div style={{ marginBottom: 20, ...style }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
+        <h2 style={{
+          margin: 0, fontSize: '11px', fontWeight: 600,
+          letterSpacing: '0.22em', textTransform: 'uppercase',
+          color: 'rgba(255,255,255,0.35)',
+        }}>
+          {title}
+        </h2>
+        <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+      </div>
+      {hint && (
+        <p style={{ margin: '5px 0 0', fontSize: '11px', color: 'rgba(255,255,255,0.15)', letterSpacing: '0.05em' }}>
+          {hint}
+        </p>
+      )}
+    </div>
+  )
+}
+
 // Loading skeleton card
 function SkeletonCard({ index }: { index: number }) {
   return (
@@ -317,8 +366,10 @@ export function SceneLibrary({ onOpen, onAddPhoto }: Props) {
       await deduplicateScenes()
       const userScenes    = await listScenes()
       const userFileNames = new Set(userScenes.map(s => s.fileName))
-      const filteredSeeds = SEEDS.filter(s => !userFileNames.has(s.fileName))
-      setScenes([...userScenes, ...filteredSeeds])
+      // Seeds = user-owned scenes (exclude sample-* from dedup check)
+      const seedScenes    = SEEDS.filter(s => s.id.startsWith('seed-') && !userFileNames.has(s.fileName))
+      const sampleScenes  = SEEDS.filter(s => s.id.startsWith('sample-'))
+      setScenes([...userScenes, ...seedScenes, ...sampleScenes])
     } finally {
       setLoading(false)
     }
@@ -497,24 +548,48 @@ export function SceneLibrary({ onOpen, onAddPhoto }: Props) {
           </div>
         )}
 
-        {/* Scene grid */}
-        {!loading && scenes.length > 0 && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-            gap: 'clamp(14px, 2vw, 22px)',
-          }}>
-            {scenes.map((scene, i) => (
-              <PortalCard
-                key={scene.id}
-                scene={scene}
-                index={i}
-                onOpen={handleOpen as (scene: SceneMeta) => void}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
-        )}
+        {/* Scene grid — split into Your Memories and Explore Spaces */}
+        {!loading && scenes.length > 0 && (() => {
+          const yours   = scenes.filter(s => !s.id.startsWith('sample-'))
+          const samples = scenes.filter(s => s.id.startsWith('sample-'))
+          const grid = (items: typeof scenes, offset = 0) => (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+              gap: 'clamp(16px, 2vw, 24px)',
+            }}>
+              {items.map((scene, i) => (
+                <PortalCard
+                  key={scene.id}
+                  scene={scene}
+                  index={offset + i}
+                  onOpen={handleOpen as (scene: SceneMeta) => void}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          )
+          return (
+            <>
+              {yours.length > 0 && (
+                <>
+                  <SectionLabel title="Your Memories" hint="Scenes you have captured or processed" />
+                  {grid(yours, 0)}
+                </>
+              )}
+              {samples.length > 0 && (
+                <>
+                  <SectionLabel
+                    title="Explore"
+                    hint="High-quality sample spaces to walk through"
+                    style={{ marginTop: yours.length > 0 ? 48 : 0 }}
+                  />
+                  {grid(samples, yours.length)}
+                </>
+              )}
+            </>
+          )
+        })()}
       </main>
     </div>
   )
