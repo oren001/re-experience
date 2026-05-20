@@ -249,6 +249,17 @@
       <option value="en-US">English</option>
       <option value="he-IL,en-US">Hebrew + English</option>
     </select>
+    <label style="margin-top:18px;border-top:1px solid rgba(255,255,255,0.06);padding-top:14px">Mouse</label>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <label style="display:flex;align-items:center;gap:10px;margin:0;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.55);text-transform:none;letter-spacing:0">
+        <input type="checkbox" id="invert-x" style="width:auto;padding:0;border:none;background:none;cursor:pointer" />
+        Invert horizontal (left/right)
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;margin:0;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.55);text-transform:none;letter-spacing:0">
+        <input type="checkbox" id="invert-y" style="width:auto;padding:0;border:none;background:none;cursor:pointer" />
+        Invert vertical (up/down)
+      </label>
+    </div>
     <button id="settings-save">Save settings</button>
     <button id="clear-history" style="margin-top:8px;width:100%;padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:rgba(255,255,255,0.25);font-size:11px;cursor:pointer;letter-spacing:0.05em;transition:all 0.2s;">Clear conversation memory</button>
   </div>
@@ -258,6 +269,7 @@
     <a id="supersplat-btn" class="tb-btn" href="https://playcanvas.com/supersplat/editor" target="_blank" rel="noopener">Edit in SuperSplat ↗</a>
     <button id="download-btn" class="tb-btn">⬇ Download PLY</button>
     <button id="find-person-btn" class="tb-btn" style="display:none">◎ Find</button>
+    <button id="save-entrance-btn" class="tb-btn">📍 Save entrance</button>
   </div>
 
   <!-- Calm / safe space overlay -->
@@ -314,7 +326,15 @@
       personName:    LS.get('person-name')    || 'the person in this memory',
       personContext: LS.get('person-context') || '',
       lang:          LS.get('lang')           || 'he-IL',
+      invertX:       LS.get('invert-x') === '1',
+      invertY:       LS.get('invert-y') === '1',
     })
+
+    // Entrance position — keyed by scene URL so each scene remembers separately
+    const entranceKey = 'entrance:' + plyUrl
+    const savedEntrance = (() => {
+      try { return JSON.parse(LS.get(entranceKey)) } catch { return null }
+    })()
 
     // Populate settings panel
     const apiKeyInput        = document.getElementById('api-key-input')
@@ -330,6 +350,8 @@
       personNameInput.value    = s.personName === 'the person in this memory' ? '' : s.personName
       personContextInput.value = s.personContext
       langInput.value          = s.lang
+      document.getElementById('invert-x').checked = s.invertX
+      document.getElementById('invert-y').checked = s.invertY
     }
     refreshSettingsUI()
 
@@ -338,6 +360,8 @@
       LS.set('person-name',    personNameInput.value.trim() || 'the person in this memory')
       LS.set('person-context', personContextInput.value.trim())
       LS.set('lang',           langInput.value)
+      LS.set('invert-x',       document.getElementById('invert-x').checked ? '1' : '0')
+      LS.set('invert-y',       document.getElementById('invert-y').checked ? '1' : '0')
       settingsPanel.classList.remove('visible')
       // Refresh Find button label
       const fb = document.getElementById('find-person-btn')
@@ -642,8 +666,17 @@
         }
       } catch(e) { console.warn('[splat] auto-fit failed:', e) }
 
-      viewer.camera.position.set(cx, cy - span * 0.05, cz + span * 1.5)
-      viewer.camera.lookAt(cx, cy, cz)
+      if (savedEntrance) {
+        // Restore saved entrance position + orientation
+        viewer.camera.position.set(savedEntrance.x, savedEntrance.y, savedEntrance.z)
+        euler.x = savedEntrance.ex
+        euler.y = savedEntrance.ey
+        viewer.camera.quaternion.setFromEuler(euler)
+      } else {
+        viewer.camera.position.set(cx, cy - span * 0.05, cz + span * 1.5)
+        viewer.camera.lookAt(cx, cy, cz)
+        euler.setFromQuaternion(viewer.camera.quaternion, 'YXZ')
+      }
 
       // ── First-person navigation ───────────────────────────────────────────────
       const euler = new THREE.Euler(0, 0, 0, 'YXZ')
@@ -669,8 +702,9 @@
 
       document.addEventListener('mousemove', e => {
         if (!walking) return
-        euler.y -= e.movementX * 0.0022
-        euler.x += e.movementY * 0.0022   // fixed: was inverted
+        const s = getSettings()
+        euler.y -= e.movementX * 0.0022 * (s.invertX ? -1 : 1)
+        euler.x -= e.movementY * 0.0022 * (s.invertY ? -1 : 1)
         euler.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, euler.x))
         viewer.camera.quaternion.setFromEuler(euler)
       })
@@ -805,6 +839,18 @@
           euler.setFromQuaternion(viewer.camera.quaternion, 'YXZ')
         })
       }
+
+      // Save entrance button — saves current camera position + look direction
+      document.getElementById('save-entrance-btn').addEventListener('click', () => {
+        const pos = viewer.camera.position
+        LS.set(entranceKey, JSON.stringify({
+          x: pos.x, y: pos.y, z: pos.z,
+          ex: euler.x, ey: euler.y,
+        }))
+        const btn = document.getElementById('save-entrance-btn')
+        btn.textContent = '✓ Entrance saved'
+        setTimeout(() => { btn.textContent = '📍 Save entrance' }, 2000)
+      })
 
       // Download PLY button
       document.getElementById('download-btn').addEventListener('click', async () => {
