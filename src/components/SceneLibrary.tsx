@@ -82,7 +82,7 @@ function PortalCard({
 }) {
   const [opening, setOpening]           = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const isSeed = scene.id.startsWith('seed-')
+  const isSeed = scene.id.startsWith('seed-') || scene.id.startsWith('sample-')
   const t   = THEMES[index % THEMES.length]
   const fmt = scene.fileName.endsWith('.spz') ? 'SPZ' : scene.fileName.endsWith('.splat') ? 'SPLAT' : 'PLY'
 
@@ -275,6 +275,7 @@ export function SceneLibrary({ onOpen, onAddPhoto }: Props) {
   const WORKER = import.meta.env.VITE_R2_UPLOAD_URL ?? 'https://re-experience-uploader.oren001.workers.dev'
 
   const SEEDS: SceneMeta[] = [
+    // ── Your scenes ────────────────────────────────────────────────────────
     {
       id: 'seed-my-memory', name: 'My Memory',
       fileName: 'scene.splat', createdAt: 1_000_000_001, sizeBytes: 5_682_240,
@@ -289,6 +290,22 @@ export function SceneLibrary({ onOpen, onAddPhoto }: Props) {
       id: 'seed-garden', name: 'Garden',
       fileName: 'garden.splat', createdAt: 1_000_000_003, sizeBytes: 22_534_592,
       url: `${WORKER}/read-scene?key=${encodeURIComponent('seeds/garden.splat')}`,
+    },
+    // ── High-quality samples (sparkjs.dev CDN — open CORS, SPZ format) ───
+    {
+      id: 'sample-bedroom', name: 'Painted Bedroom',
+      fileName: 'painted_bedroom.spz', createdAt: 1_000_000_004, sizeBytes: 7_841_329,
+      url: 'https://storage.googleapis.com/forge-dev-public/painted_bedroom.spz',
+    },
+    {
+      id: 'sample-fireplace', name: 'By the Fire',
+      fileName: 'fireplace.spz', createdAt: 1_000_000_005, sizeBytes: 4_377_719,
+      url: 'https://sparkjs.dev/assets/splats/fireplace.spz',
+    },
+    {
+      id: 'sample-valley', name: 'Valley',
+      fileName: 'valley.spz', createdAt: 1_000_000_006, sizeBytes: 6_752_303,
+      url: 'https://sparkjs.dev/assets/splats/valley.spz',
     },
   ]
 
