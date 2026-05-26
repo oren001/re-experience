@@ -7,6 +7,7 @@ import {
   Color3,
   Color4,
   Vector3,
+  VertexData,
 } from '@babylonjs/core'
 
 // 4 depth layers ordered far → close.
@@ -103,6 +104,117 @@ export async function buildLayeredPhotoWorld(
   const lookTarget = new Vector3(-0.5, 0, LAYERS[1].z * 0.6)  // look toward background
 
   return { startPosition, lookTarget }
+}
+
+/**
+ * Builds a single CONTINUOUS depth-displaced mesh from a photo + depth map —
+ * not a stack of flat billboards. Every grid vertex is pushed along Z by its
+ * per-pixel depth, so the scene becomes a true 3D relief: foreground objects
+ * stand proud, the background recedes, and you fly *through* the geometry.
+ *
+ * Quads spanning a sharp depth discontinuity (e.g. a person's silhouette
+ * against a far wall) are dropped rather than stretched, giving crisp edges
+ * with the dark void behind instead of rubbery smears.
+ */
+export async function buildDepthMeshWorld(
+  scene: Scene,
+  photoData: ImageData,
+  depthData: ImageData,
+  imageUrl: string,
+): Promise<{ startPosition: Vector3; lookTarget: Vector3; fov: number }> {
+  // Clear any previous world (layers or a prior mesh)
+  scene.meshes
+    .filter((m) => m.name.startsWith('layer_') || m.name === 'photoMesh' || m.name === 'photoGround')
+    .forEach((m) => { m.material?.dispose(); m.dispose() })
+
+  const imgAspect = photoData.width / photoData.height
+  const FOV      = 0.95            // vertical field of view (radians) for un-projection
+  const tanV     = Math.tan(FOV / 2)
+  const NEAR     = 3               // distance (m) of the closest pixels
+  const FAR      = 15              // distance (m) of the farthest pixels (shallower = less smear)
+  const MAX_STEP = 0.12            // cut quads across depth edges so foreground detaches from background
+
+  // Grid resolution — denser along the longer image axis, capped for perf
+  const cols = imgAspect >= 1 ? 220 : Math.round(220 * imgAspect)
+  const rows = Math.max(2, Math.round(cols / imgAspect))
+
+  const dw = depthData.width
+  const dh = depthData.height
+  const sampleDepth = (u: number, v: number) => {
+    const x = Math.min(dw - 1, Math.max(0, Math.round(u * (dw - 1))))
+    const y = Math.min(dh - 1, Math.max(0, Math.round(v * (dh - 1))))
+    return depthData.data[(y * dw + x) * 4] / 255   // 1 = close, 0 = far
+  }
+
+  const positions: number[] = []
+  const uvs: number[] = []
+  const depthAt: number[] = []
+  const stride = cols + 1
+
+  // Perspective UN-projection: place each pixel along its camera ray at a
+  // distance set by its depth. A camera at the origin with this same FOV then
+  // sees the original photo, and moving reveals genuine parallax.
+  for (let j = 0; j <= rows; j++) {
+    const v = j / rows
+    const ny = (0.5 - v) * 2
+    for (let i = 0; i <= cols; i++) {
+      const u = i / cols
+      const nx = (u - 0.5) * 2
+      const d = sampleDepth(u, v)
+      depthAt.push(d)
+      const Z = NEAR + (1 - d) * (FAR - NEAR)
+      positions.push(nx * Z * tanV * imgAspect, ny * Z * tanV, Z)
+      uvs.push(u, v)
+    }
+  }
+
+  const indices: number[] = []
+  for (let j = 0; j < rows; j++) {
+    for (let i = 0; i < cols; i++) {
+      const a = j * stride + i
+      const b = a + 1
+      const c = a + stride
+      const e = c + 1
+      // Skip quads bridging a steep depth edge (avoids stretched smears)
+      const dmax = Math.max(depthAt[a], depthAt[b], depthAt[c], depthAt[e])
+      const dmin = Math.min(depthAt[a], depthAt[b], depthAt[c], depthAt[e])
+      if (dmax - dmin > MAX_STEP) continue
+      indices.push(a, c, b, b, c, e)
+    }
+  }
+
+  const mesh = new Mesh('photoMesh', scene)
+  const vd = new VertexData()
+  vd.positions = positions
+  vd.indices = indices
+  vd.uvs = uvs
+  const normals: number[] = []
+  VertexData.ComputeNormals(positions, indices, normals)
+  vd.normals = normals
+  vd.applyToMesh(mesh)
+  mesh.isPickable = false
+
+  const mat = new StandardMaterial('photoMeshMat', scene)
+  const tex = new Texture(imageUrl, scene, false, false, Texture.TRILINEAR_SAMPLINGMODE)
+  mat.diffuseTexture = tex
+  mat.emissiveTexture = tex
+  mat.emissiveColor = new Color3(1, 1, 1)
+  mat.disableLighting = true
+  mat.backFaceCulling = false
+  mesh.material = mat
+
+  // Dark, slightly tinted void + fog so cut edges and the far rim fade out
+  const sky = sampleAverageColor(photoData, 0, 0.1)
+  const bg = new Color3((sky[0] / 255) * 0.18, (sky[1] / 255) * 0.18, (sky[2] / 255) * 0.18)
+  scene.clearColor = new Color4(bg.r, bg.g, bg.b, 1)
+  scene.fogMode = Scene.FOGMODE_EXP2
+  scene.fogColor = bg
+  scene.fogDensity = 0.018
+
+  // Start at the projection apex (the photo fills the view) looking straight in
+  const startPosition = new Vector3(0, 0, 0)
+  const lookTarget = new Vector3(0, 0, NEAR + 4)
+  return { startPosition, lookTarget, fov: FOV }
 }
 
 /** Produces a blob URL for a depth-range-masked version of the photo (PNG with alpha). */

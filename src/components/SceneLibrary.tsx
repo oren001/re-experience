@@ -84,7 +84,10 @@ function PortalCard({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const isSeed = scene.id.startsWith('seed-') || scene.id.startsWith('sample-')
   const t   = THEMES[index % THEMES.length]
-  const fmt = scene.fileName.endsWith('.spz') ? 'SPZ' : scene.fileName.endsWith('.splat') ? 'SPLAT' : 'PLY'
+  const fmt = /\.(jpe?g|png|webp|avif)$/i.test(scene.fileName) ? 'PHOTO'
+    : scene.fileName.endsWith('.spz') ? 'SPZ'
+    : scene.fileName.endsWith('.splat') ? 'SPLAT'
+    : 'PLY'
   // Thumbnail captured the last time this scene was visited
   const thumbKey = `re-exp-thumb:${scene.url ?? scene.id}`
   const thumbnail = (() => { try { return localStorage.getItem(thumbKey) } catch { return null } })()
@@ -324,6 +327,22 @@ export function SceneLibrary({ onOpen, onAddPhoto }: Props) {
   const WORKER = import.meta.env.VITE_R2_UPLOAD_URL ?? 'https://re-experience-uploader.oren001.workers.dev'
 
   const SEEDS: SceneMeta[] = [
+    // ── Photo memories — walkable depth-parallax worlds built in-browser ────
+    {
+      id: 'seed-vangogh-tunnel', name: 'Sunflower Tunnel',
+      fileName: 'sunflower-tunnel.jpg', createdAt: 1_700_000_003, sizeBytes: 409_353,
+      url: '/memories/sunflower-tunnel.jpg',
+    },
+    {
+      id: 'seed-vangogh-beetle', name: 'Starry Night Beetle',
+      fileName: 'sunflower-beetle.jpg', createdAt: 1_700_000_002, sizeBytes: 383_302,
+      url: '/memories/sunflower-beetle.jpg',
+    },
+    {
+      id: 'seed-vangogh-entrance', name: 'Sunflower Café',
+      fileName: 'sunflower-entrance.jpg', createdAt: 1_700_000_001, sizeBytes: 1_356_102,
+      url: '/memories/sunflower-entrance.jpg',
+    },
     // ── Your scenes ────────────────────────────────────────────────────────
     {
       id: 'seed-my-memory', name: 'My Memory',

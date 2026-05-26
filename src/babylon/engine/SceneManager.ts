@@ -7,8 +7,9 @@ import {
   HemisphericLight,
   Color3,
   Color4,
+  type Observer,
 } from '@babylonjs/core'
-import { buildLayeredPhotoWorld } from '../scene/PhotoWorldBuilder'
+import { buildDepthMeshWorld } from '../scene/PhotoWorldBuilder'
 import { buildVideoWorld } from '../scene/VideoWorldBuilder'
 import { buildSafeSpace } from '../safeSpace/SafeSpaceScene'
 
@@ -18,6 +19,15 @@ export class SceneManager {
   private canvas: HTMLCanvasElement
   private camera: UniversalCamera | null = null
   private isSafeSpace = false
+  private clampObserver: Observer<Scene> | null = null
+
+  /** Keep the player inside a gentle parallax envelope (photo worlds only). */
+  private clearClamp() {
+    if (this.clampObserver) {
+      this.scene.onBeforeRenderObservable.remove(this.clampObserver)
+      this.clampObserver = null
+    }
+  }
 
   constructor(engine: Engine, canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -43,18 +53,19 @@ export class SceneManager {
     })
   }
 
-  async loadPhotoWorld(_imageUrl: string, photoData: globalThis.ImageData, depthData: globalThis.ImageData) {
+  async loadPhotoWorld(imageUrl: string, photoData: globalThis.ImageData, depthData: globalThis.ImageData) {
     // Remove previous photo world meshes
     this.scene.meshes
-      .filter((m) => m.name.startsWith('layer_') || m.name === 'photoGround' || m.name === 'photoWorld')
+      .filter((m) => m.name.startsWith('layer_') || m.name === 'photoMesh' || m.name === 'photoGround' || m.name === 'photoWorld')
       .forEach((m) => { m.material?.dispose(); m.dispose() })
 
-    // Build layers (async — keep the idle camera alive during this await so
-    // the render loop never runs without a camera)
-    const { startPosition, lookTarget } = await buildLayeredPhotoWorld(
+    // Build a continuous depth-displaced mesh (async — keep the idle camera
+    // alive during this await so the render loop never runs without a camera)
+    const { startPosition, lookTarget, fov } = await buildDepthMeshWorld(
       this.scene,
       photoData,
       depthData,
+      imageUrl,
     )
 
     // Now safe to remove the idle / previous camera
@@ -65,14 +76,17 @@ export class SceneManager {
       this.camera.dispose()
     }
 
-    // First-person navigation camera
+    // First-person navigation camera. Free-flight at eye level: gravity/collisions
+    // are off so the player glides through the parallax layers instead of falling
+    // to the (far-below) ground plane and sinking out of the scene.
     const cam = new UniversalCamera('navCam', startPosition, this.scene)
     cam.setTarget(lookTarget)
-    cam.speed = 0.12
-    cam.angularSensibility = 900
+    cam.fov = fov              // match the un-projection FOV so the photo frames correctly
+    cam.speed = 0.05           // gentle drift
+    cam.angularSensibility = 4000   // higher = slower mouse look
     cam.minZ = 0.1
-    cam.checkCollisions = true
-    cam.applyGravity = true
+    cam.checkCollisions = false
+    cam.applyGravity = false
     cam.ellipsoid = new Vector3(0.4, 0.85, 0.4)
     cam.keysUp    = [87, 38]  // W / ↑
     cam.keysDown  = [83, 40]  // S / ↓
@@ -82,9 +96,20 @@ export class SceneManager {
 
     this.camera = cam
     this.scene.activeCamera = cam
+
+    // Keep the player in a pleasant parallax zone, in front of the relief, so
+    // they never dive *through* the foreground (which smears the geometry).
+    this.clearClamp()
+    this.clampObserver = this.scene.onBeforeRenderObservable.add(() => {
+      const p = cam.position
+      if (p.x < -4)   p.x = -4;   else if (p.x > 4)   p.x = 4
+      if (p.y < -2.5) p.y = -2.5; else if (p.y > 2.5) p.y = 2.5
+      if (p.z < -2.5) p.z = -2.5; else if (p.z > 2)   p.z = 2
+    })
   }
 
   async loadVideoWorld(videoFile: File) {
+    this.clearClamp()
     this.scene.meshes
       .filter((m) => m.name.startsWith('video') || m.name.startsWith('layer_') || m.name === 'photoGround')
       .forEach((m) => { m.material?.dispose(); m.dispose() })
@@ -143,6 +168,7 @@ export class SceneManager {
   }
 
   dispose() {
+    this.clearClamp()
     this.scene.dispose()
     this.safeScene?.dispose()
   }
